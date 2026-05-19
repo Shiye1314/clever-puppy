@@ -22,59 +22,49 @@ export default function StylePage() {
   const [categories, setCategories] = useState<Array<{id: string; name: string; writing_samples_count: number; updated_at: string}>>([]);
   const [batchLearning, setBatchLearning] = useState(false);
   const [batchResult, setBatchResult] = useState<{
-    totalArticles: number;
-    classified: number;
-    categoriesFound: number;
-    dnaUpdated: number;
-    categories: Array<{ categoryId: string; categoryName: string; articleCount: number }>;
+    totalArticles: number; classified: number; categoriesFound: number;
+    dnaUpdated: number; categories: Array<{ categoryId: string; categoryName: string; articleCount: number }>;
   } | null>(null);
 
   useEffect(() => {
-    fetch("/api/style-dna")
-      .then((r) => r.json())
-      .then((d) => {
-        if (d && !d.error) setDna({ ...defaultDna, ...d });
-      })
-      .catch(() => {});
+    fetch("/api/style-dna").then((r) => r.json()).then((d) => {
+      if (d && !d.error) setDna({ ...defaultDna, ...d });
+    }).catch(() => {});
   }, []);
 
   useEffect(() => {
-    fetch("/api/categories")
-      .then((r) => r.json())
-      .then((data) => {
-        if (Array.isArray(data)) setCategories(data);
-      })
-      .catch(() => {});
+    fetch("/api/categories").then((r) => r.json()).then((data) => {
+      if (Array.isArray(data)) setCategories(data);
+    }).catch(() => {});
   }, []);
 
-  const handleAnalyze = async () => {
+  const handleBatchLearn = async () => {
     if (!samples.trim()) return;
-    setAnalyzing(true);
+    setBatchLearning(true);
+    setBatchResult(null);
     try {
-      const res = await fetch("/api/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: samples, analyzeStyle: true }),
+      const res = await fetch("/api/learn/batch", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: samples }),
       });
       const data = await res.json();
-      // For now just show the samples were received
-      alert(`已接收 ${samples.split("---").length} 篇范文，分析功能将在后续迭代中完善`);
+      if (data.error) throw new Error(data.error);
+      setBatchResult(data);
+      fetch("/api/categories").then((r) => r.json()).then((d) => {
+        if (Array.isArray(d)) setCategories(d);
+      }).catch(() => {});
     } catch (err) {
-      alert("分析失败: " + (err as Error).message);
+      alert("批量学习失败: " + (err as Error).message);
     }
-    setAnalyzing(false);
+    setBatchLearning(false);
   };
 
   const handleSave = async () => {
     const res = await fetch("/api/style-dna", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      method: "PUT", headers: { "Content-Type": "application/json" },
       body: JSON.stringify(dna),
     });
-    if (res.ok) {
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
-    }
+    if (res.ok) { setSaved(true); setTimeout(() => setSaved(false), 2000); }
   };
 
   const handleViewCategory = async (id: string) => {
@@ -86,201 +76,162 @@ export default function StylePage() {
     }
   };
 
-  const handleBatchLearn = async () => {
-    if (!samples.trim()) return;
-    setBatchLearning(true);
-    setBatchResult(null);
-    try {
-      const res = await fetch("/api/learn/batch", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: samples }),
-      });
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      setBatchResult(data);
-      // 刷新大类列表
-      fetch("/api/categories")
-        .then((r) => r.json())
-        .then((d) => { if (Array.isArray(d)) setCategories(d); })
-        .catch(() => {});
-    } catch (err) {
-      alert("批量学习失败: " + (err as Error).message);
-    }
-    setBatchLearning(false);
-  };
-
   return (
     <div className="flex h-[calc(100vh-56px)]">
-      {/* 左侧：导入范文 + 风格档案 */}
-      <div className="flex-1 overflow-y-auto px-8 py-10 border-r border-border">
-        <h1 className="font-serif text-3xl text-ink mb-10">风格 DNA</h1>
+      {/* 左侧 — 导入 + 档案 */}
+      <div className="flex-1 overflow-y-auto pl-10 pr-8 py-12">
+        <div className="max-w-[620px]">
+          <h1 className="font-serif text-[28px] leading-tight text-ink mb-10">风格 DNA</h1>
 
-        {/* 范文导入 */}
-        <section className="mb-10">
-          <h2 className="text-sm text-muted uppercase tracking-wider mb-4">导入范文</h2>
-          <textarea
-            value={samples}
-            onChange={(e) => setSamples(e.target.value)}
-            placeholder="粘贴 5-10 篇你的爆文代表作，每篇用 --- 分隔..."
-            className="w-full h-36 prose-input text-sm resize-y"
-          />
-          <div className="flex gap-3 mt-3">
-            <button
-              onClick={handleAnalyze}
-              disabled={analyzing || !samples.trim()}
-              className="text-xs text-muted hover:text-amber transition-colors disabled:opacity-40"
-            >
-              {analyzing ? "分析中..." : "分析风格 →"}
-            </button>
-            <button
-              onClick={handleBatchLearn}
-              disabled={batchLearning || !samples.trim()}
-              className="text-xs text-amber hover:text-amber/80 transition-colors disabled:opacity-40 border-b border-amber"
-            >
-              {batchLearning ? "批量学习中..." : "批量学习（自动分类）→"}
-            </button>
-          </div>
-          {batchResult && (
-            <div className="mt-4 p-4 border border-amber/30 bg-amber/[0.03]">
-              <p className="text-xs text-ink font-medium mb-2">学习完成</p>
-              <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs text-muted">
-                <span>总文章数：{batchResult.totalArticles}</span>
-                <span>成功分类：{batchResult.classified}</span>
-                <span>识别品类：{batchResult.categoriesFound}</span>
-                <span>已更新DNA：{batchResult.dnaUpdated}</span>
-              </div>
-              {batchResult.categories.length > 0 && (
-                <div className="mt-3 space-y-1">
-                  {batchResult.categories.map((cat) => (
-                    <div key={cat.categoryId} className="text-xs text-muted flex justify-between">
-                      <span>📂 {cat.categoryName}</span>
-                      <span>{cat.articleCount} 篇</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </section>
-
-        {/* 风格DNA 编辑 */}
-        <section className="space-y-5">
-          <h2 className="text-sm text-muted uppercase tracking-wider mb-4">风格档案</h2>
-
-          <div>
-            <label className="block text-xs text-ink mb-1">语气</label>
-            <input
-              type="text"
-              value={dna.tone}
-              onChange={(e) => setDna({ ...dna, tone: e.target.value })}
-              className="w-full prose-input text-sm"
-              placeholder="如：闺蜜聊天 + 10% 专业背书"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs text-ink mb-1">高频关键词（逗号分隔）</label>
-            <input
-              type="text"
-              value={dna.keywords_high_freq.join(", ")}
-              onChange={(e) =>
-                setDna({ ...dna, keywords_high_freq: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })
-              }
-              className="w-full prose-input text-sm"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs text-ink mb-1">标题公式（每行一个）</label>
+          {/* 导入范文 */}
+          <section className="mb-14">
+            <h2 className="text-[13px] tracking-[0.15em] text-muted/70 uppercase mb-5">导入范文</h2>
             <textarea
-              value={dna.title_formulas.join("\n")}
-              onChange={(e) =>
-                setDna({ ...dna, title_formulas: e.target.value.split("\n").filter(Boolean) })
-              }
-              className="w-full h-20 prose-input text-sm resize-y"
+              value={samples}
+              onChange={(e) => setSamples(e.target.value)}
+              placeholder="粘贴爆文代表作，每篇用 --- 分隔"
+              className="w-full h-32 prose-input text-[14px] leading-relaxed resize-y"
             />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs text-ink mb-1">短句比例</label>
-              <input
-                type="range" min="0" max="1" step="0.1"
-                value={dna.paragraph_rhythm.short_sentence_ratio}
-                onChange={(e) =>
-                  setDna({ ...dna, paragraph_rhythm: { ...dna.paragraph_rhythm, short_sentence_ratio: parseFloat(e.target.value) } })
-                }
-                className="w-full"
-              />
-              <span className="text-xs text-muted">{dna.paragraph_rhythm.short_sentence_ratio}</span>
-            </div>
-            <div>
-              <label className="block text-xs text-ink mb-1">感叹号密度</label>
-              <select
-                value={dna.paragraph_rhythm.exclamation_density}
-                onChange={(e) =>
-                  setDna({ ...dna, paragraph_rhythm: { ...dna.paragraph_rhythm, exclamation_density: e.target.value } })
-                }
-                className="w-full prose-input text-sm"
+            <div className="flex gap-4 mt-4">
+              <button
+                onClick={handleBatchLearn}
+                disabled={batchLearning || !samples.trim()}
+                className="text-[13px] text-amber/80 hover:text-amber transition-colors disabled:opacity-30"
               >
-                <option value="low">低</option>
-                <option value="medium">中</option>
-                <option value="high">高</option>
-              </select>
+                {batchLearning ? "学习中..." : "批量学习（自动分类）"}
+              </button>
             </div>
-          </div>
+            {batchResult && (
+              <div className="mt-5 p-5 border border-amber/[0.15] bg-amber/[0.02]">
+                <p className="text-[13px] text-ink font-medium mb-3">学习完成</p>
+                <div className="flex gap-8 text-[12px] text-muted/80">
+                  <span>{batchResult.totalArticles} 篇文章</span>
+                  <span>{batchResult.categoriesFound} 个品类</span>
+                  <span>{batchResult.dnaUpdated} 个DNA已更新</span>
+                </div>
+              </div>
+            )}
+          </section>
 
-          <div>
-            <label className="block text-xs text-ink mb-1">常用 Emoji（逗号分隔）</label>
-            <input
-              type="text"
-              value={dna.emoji_usage.preferred.join(", ")}
-              onChange={(e) =>
-                setDna({ ...dna, emoji_usage: { ...dna.emoji_usage, preferred: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) } })
-              }
-              className="w-full prose-input text-sm"
-              placeholder="✨, 💡, ✅, 🔥"
-            />
-          </div>
+          {/* 风格档案 */}
+          <section>
+            <h2 className="text-[13px] tracking-[0.15em] text-muted/70 uppercase mb-6">风格档案</h2>
 
-          <button
-            onClick={handleSave}
-            className="px-8 py-2.5 border border-amber text-amber text-sm hover:bg-amber hover:text-white transition-all duration-300"
-          >
-            {saved ? "已保存" : "保存风格档案"}
-          </button>
-        </section>
+            <div className="space-y-5">
+              <div>
+                <label className="block text-[11px] tracking-wider text-muted/60 uppercase mb-2">语气</label>
+                <input
+                  type="text" value={dna.tone}
+                  onChange={(e) => setDna({ ...dna, tone: e.target.value })}
+                  className="w-full prose-input text-[14px]" placeholder="如：闺蜜聊天 + 10% 专业背书"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-[11px] tracking-wider text-muted/60 uppercase mb-2">高频关键词</label>
+                  <input
+                    type="text"
+                    value={dna.keywords_high_freq.join(", ")}
+                    onChange={(e) => setDna({ ...dna, keywords_high_freq: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
+                    className="w-full prose-input text-[14px]" placeholder="逗号分隔"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] tracking-wider text-muted/60 uppercase mb-2">常用 Emoji</label>
+                  <input
+                    type="text"
+                    value={dna.emoji_usage.preferred.join(", ")}
+                    onChange={(e) => setDna({ ...dna, emoji_usage: { ...dna.emoji_usage, preferred: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) } })}
+                    className="w-full prose-input text-[14px]" placeholder="✨ 💡 ✅ 🔥"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] tracking-wider text-muted/60 uppercase mb-2">标题公式</label>
+                <textarea
+                  value={dna.title_formulas.join("\n")}
+                  onChange={(e) => setDna({ ...dna, title_formulas: e.target.value.split("\n").filter(Boolean) })}
+                  className="w-full h-16 prose-input text-[14px] leading-relaxed resize-y" placeholder="每行一个"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-8">
+                <div>
+                  <label className="block text-[11px] tracking-wider text-muted/60 uppercase mb-2">
+                    短句比例 <span className="tabular-nums ml-0.5">{dna.paragraph_rhythm.short_sentence_ratio}</span>
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <span className="text-[10px] text-muted/40 tabular-nums w-4">0</span>
+                    <input
+                      type="range" min="0" max="1" step="0.1"
+                      value={dna.paragraph_rhythm.short_sentence_ratio}
+                      onChange={(e) => setDna({ ...dna, paragraph_rhythm: { ...dna.paragraph_rhythm, short_sentence_ratio: parseFloat(e.target.value) } })}
+                      className="flex-1 h-[2px] accent-amber appearance-none bg-border cursor-pointer"
+                    />
+                    <span className="text-[10px] text-muted/40 tabular-nums w-4">1</span>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-[11px] tracking-wider text-muted/60 uppercase mb-2">感叹号密度</label>
+                  <select
+                    value={dna.paragraph_rhythm.exclamation_density}
+                    onChange={(e) => setDna({ ...dna, paragraph_rhythm: { ...dna.paragraph_rhythm, exclamation_density: e.target.value } })}
+                    className="w-full prose-input text-[14px]"
+                  >
+                    <option value="low">低</option>
+                    <option value="medium">中</option>
+                    <option value="high">高</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={handleSave}
+              className="mt-10 px-10 py-2.5 border border-amber/50 text-amber text-[13px] tracking-wider hover:bg-amber hover:text-white transition-all duration-300"
+            >
+              {saved ? "已保存" : "保存风格档案"}
+            </button>
+          </section>
+        </div>
       </div>
 
-      {/* 右侧：大类管理 */}
-      <div className="w-[360px] flex-shrink-0 overflow-y-auto px-6 py-10">
-        <h2 className="text-sm text-muted uppercase tracking-wider mb-2">大类管理</h2>
-        <p className="text-xs text-muted/70 mb-6">
-          每个大类独立学习你的写作风格。投喂越多，模仿越精准。
+      {/* 右侧 — 大类管理 */}
+      <div className="w-[420px] flex-shrink-0 overflow-y-auto bg-paper/50 pl-6 pr-8 py-12">
+        <h2 className="text-[13px] tracking-[0.15em] text-muted/70 uppercase mb-1.5">大类管理</h2>
+        <p className="text-[12px] text-muted/50 leading-relaxed mb-8">
+          每个品类独立学习你的写作风格，投喂越多，模仿越精准
         </p>
 
-        <div className="space-y-2">
+        <div className="space-y-3">
           {categories.map((cat) => (
-            <div key={cat.id} className="flex items-center justify-between paper-card p-3">
-              <div className="min-w-0">
-                <p className="text-sm text-ink font-medium truncate">{cat.name}</p>
-                <p className="text-[11px] text-muted">
-                  {cat.writing_samples_count} 篇范文 · {new Date(cat.updated_at).toLocaleDateString("zh-CN")}
-                </p>
+            <div
+              key={cat.id}
+              onClick={() => handleViewCategory(cat.id)}
+              className="group px-5 py-4 border border-border/50 hover:border-amber/30 cursor-pointer transition-all duration-200"
+            >
+              <div className="flex items-end justify-between">
+                <span className="text-[15px] text-ink font-serif">{cat.name}</span>
+                <span className="text-[36px] leading-none text-muted/15 tabular-nums font-serif">
+                  {cat.writing_samples_count}
+                </span>
               </div>
-              <button
-                onClick={() => handleViewCategory(cat.id)}
-                className="ml-3 flex-shrink-0 text-xs text-muted hover:text-amber transition-colors"
-              >
-                查看DNA
-              </button>
+              <p className="text-[11px] text-muted/40 mt-1.5">
+                {new Date(cat.updated_at).toLocaleDateString("zh-CN")}
+              </p>
             </div>
           ))}
           {categories.length === 0 && (
-            <p className="text-sm text-muted/60 text-center py-12">
-              暂无大类。<br />投喂不同品类的爆文后会自动创建。
-            </p>
+            <div className="py-16 text-center">
+              <p className="text-[13px] text-muted/40 leading-relaxed">
+                暂无品类
+              </p>
+              <p className="text-[12px] text-muted/30 mt-1">
+                导入范文后自动分类
+              </p>
+            </div>
           )}
         </div>
       </div>
