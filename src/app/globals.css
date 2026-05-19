@@ -1,12 +1,13 @@
 @import "tailwindcss";
 
 @theme {
-  --color-paper: #FAF8F5;
-  --color-ink: #2C2416;
-  --color-amber: #C8922B;
-  --color-amber-light: #E8C560;
-  --color-muted: #8C8579;
-  --color-border: #E5E0D8;
+  --color-paper: #FAFBFC;
+  --color-surface: #FFFFFF;
+  --color-ink: #171717;
+  --color-amber: #2563EB;
+  --color-amber-light: #DBEAFE;
+  --color-muted: #737373;
+  --color-border: #E5E5E5;
   --font-family-serif: "Noto Serif SC", Georgia, serif;
   --font-family-sans: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
   --font-family-mono: "Geist Mono", Inter, monospace;
@@ -21,8 +22,8 @@
 }
 
 @keyframes breathe {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(200, 146, 43, 0); }
-  50% { box-shadow: 0 0 0 4px rgba(200, 146, 43, 0.12); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
+  50% { box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12); }
 }
 
 @layer base {
@@ -31,7 +32,7 @@
   }
 
   h1, h2, h3 {
-    @apply font-serif;
+    @apply font-sans tracking-tight;
   }
 
   ::selection {
@@ -52,5 +53,13 @@
 
   .paper-card {
     @apply border border-border bg-paper;
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
   }
 }

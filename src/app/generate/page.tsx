@@ -163,36 +163,58 @@ export default function GeneratePage() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-56px)]">
+    <div className="flex h-[calc(100vh-135px)]">
       {/* 操作区 40% */}
-      <div className="w-[40%] min-w-[400px] border-r border-border overflow-y-auto p-8 space-y-8">
-        <div>
-          <p className="text-xs text-muted uppercase tracking-wider mb-4">Step 1 · 上传资料</p>
-          <UploadZone onTextReady={handleTextReady} />
-          <button
-            onClick={handleExtract}
-            disabled={!rawContent || extracting}
-            className="mt-4 text-xs text-muted hover:text-amber transition-colors disabled:opacity-40"
-          >
-            {extracting ? "提炼中..." : "整理信息 →"}
-          </button>
-        </div>
-
-        <div>
-          <p className="text-xs text-muted uppercase tracking-wider mb-4">Step 2 · 产品信息卡</p>
-          <ProductCardForm card={card} onChange={setCard} loading={extracting} />
-          <div className="text-xs text-muted mb-1">写作风格</div>
-          <CategorySelector value={selectedCategory} onChange={setSelectedCategory} />
-          <div className="mt-6">
-            <EmpowerButton onClick={handleGenerate} loading={generating} />
+      <div className="w-[40%] min-w-[440px] border-r border-border overflow-y-auto scrollbar-hide p-10 space-y-10">
+        {/* Step 1 */}
+        <section>
+          <div className="flex items-center gap-2 mb-4">
+            <span className="w-1 h-4 rounded-full bg-amber flex-shrink-0" />
+            <span className="text-[32px] font-medium text-ink">上传资料</span>
           </div>
-        </div>
+          <div className="rounded-xl bg-surface border border-border p-5 space-y-4">
+            <UploadZone onTextReady={handleTextReady} />
+            <button
+              onClick={handleExtract}
+              disabled={!rawContent || extracting}
+              className="text-[32px] text-amber hover:text-amber/80 transition-colors disabled:opacity-30 font-medium"
+            >
+              {extracting ? "提炼中..." : "整理信息 →"}
+            </button>
+          </div>
+        </section>
+
+        {/* Step 2 */}
+        <section>
+          <div className="flex items-center gap-2 mb-4">
+            <span className="w-1 h-4 rounded-full bg-amber flex-shrink-0" />
+            <span className="text-[32px] font-medium text-ink">产品信息卡</span>
+          </div>
+          <div className="rounded-xl bg-surface border border-border p-5 space-y-6">
+            <ProductCardForm card={card} onChange={setCard} loading={extracting} />
+
+            <div className="flex items-center gap-2 pt-2">
+              <span className="w-1 h-4 rounded-full bg-amber flex-shrink-0" />
+              <span className="text-[20px] font-medium text-muted/70">写作风格</span>
+            </div>
+            <CategorySelector value={selectedCategory} onChange={setSelectedCategory} />
+
+            <div className="pt-2">
+              <EmpowerButton onClick={handleGenerate} loading={generating} />
+            </div>
+          </div>
+        </section>
       </div>
 
       {/* 结果区 60% */}
-      <div className="w-[60%] overflow-y-auto p-8">
-        <p className="text-xs text-muted uppercase tracking-wider mb-6">Step 3 · 爆文输出</p>
+      <div className="w-[60%] overflow-y-auto p-10">
+        <div className="flex items-center gap-2 mb-6">
+          <span className="w-1 h-4 rounded-full bg-amber flex-shrink-0" />
+          <span className="text-[32px] font-medium text-ink">爆文输出</span>
+        </div>
+
         <AgentStatus agents={agentStatus} generating={generating} />
+
         {sections.painPoint || sections.transition || sections.productIntro ? (
           <>
             <ArticleResult
@@ -203,15 +225,17 @@ export default function GeneratePage() {
             />
             <button
               onClick={handleSave}
-              className="mt-6 text-xs text-muted hover:text-amber transition-colors"
+              className="mt-8 text-[32px] text-muted/60 hover:text-amber transition-colors font-medium"
             >
-              💾 保存到历史
+              保存到历史
             </button>
           </>
         ) : (
-          <p className="text-sm text-muted/60 mt-32 text-center">
-            点击"爆文赋能启动"后此处显示生成结果
-          </p>
+          <div className="rounded-xl bg-surface border border-border p-16 text-center mt-4">
+            <p className="text-[20px] text-muted/40 leading-relaxed">
+              点击"生成"后此处显示生成结果
+            </p>
+          </div>
         )}
       </div>
     </div>

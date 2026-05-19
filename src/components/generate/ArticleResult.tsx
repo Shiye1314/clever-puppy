@@ -26,21 +26,22 @@ export default function ArticleResult({ sections, onChange, onRewriteSection, lo
   ];
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {editors.map(({ key, label }) => (
-        <SectionEditor
-          key={key}
-          label={label}
-          content={sections[key]}
-          onChange={(v) => update(key, v)}
-          onRewrite={() => onRewriteSection(key)}
-          loading={loading === key}
-        />
+        <div key={key} className="rounded-xl bg-surface border border-border p-5">
+          <SectionEditor
+            label={label}
+            content={sections[key]}
+            onChange={(v) => update(key, v)}
+            onRewrite={() => onRewriteSection(key)}
+            loading={loading === key}
+          />
+        </div>
       ))}
-      <div className="flex gap-4 pt-2">
+      <div className="pt-2">
         <button
           onClick={() => navigator.clipboard.writeText(fullText)}
-          className="text-xs text-muted hover:text-amber transition-colors"
+          className="text-[28px] text-muted/50 hover:text-amber transition-colors font-medium"
         >
           复制全文
         </button>

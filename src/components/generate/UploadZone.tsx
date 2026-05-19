@@ -39,13 +39,13 @@ export default function UploadZone({ onTextReady }: Props) {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div
         onDrop={handleDrop}
         onDragOver={(e) => e.preventDefault()}
         onClick={() => fileRef.current?.click()}
-        className="border border-dashed border-border rounded-sm p-8 text-center cursor-pointer
-                   hover:border-amber transition-colors duration-200"
+        className="rounded-[16px] border border-border bg-surface px-8 py-8 text-center cursor-pointer
+                   hover:border-amber/50 hover:bg-amber-light/10 transition-all duration-300"
       >
         <input
           ref={fileRef}
@@ -55,30 +55,33 @@ export default function UploadZone({ onTextReady }: Props) {
           onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
         />
         {loading ? (
-          <p className="text-sm text-muted">解析中...</p>
+          <p className="text-[20px] text-muted/50">解析中...</p>
         ) : (
           <>
-            <p className="text-sm text-muted mb-1">
+            <p className="text-[20px] text-muted">
               拖拽文件到此处，或点击上传
             </p>
-            <p className="text-xs text-muted/60">
-              支持 PDF、PPT、Word、纯文本
+            <p className="text-[20px] text-muted/40 mt-1.5">
+              PDF / PPT / Word / 纯文本
             </p>
           </>
         )}
       </div>
 
       <textarea
-        placeholder="或直接粘贴产品资料文字..."
-        className="w-full h-24 prose-input text-sm resize-none"
+        placeholder="或直接粘贴产品资料"
+        className="w-full h-20 rounded-[16px] border border-border bg-surface px-4 py-3 text-[20px] text-ink
+                   placeholder:text-muted/40 resize-none
+                   focus:outline-none focus:border-amber/50 focus:ring-1 focus:ring-amber/20
+                   transition-colors duration-200"
         onBlur={(e) => {
           if (e.target.value.trim()) handlePasteText(e.target.value.trim());
         }}
       />
 
       {preview && (
-        <div className="text-xs text-muted leading-relaxed">
-          <p className="text-ink font-medium mb-1">
+        <div className="rounded-[16px] bg-amber-light/20 px-4 py-3 text-[20px] text-muted leading-relaxed">
+          <p className="text-ink font-medium mb-0.5">
             {fileName || "预览"}
           </p>
           <p className="line-clamp-4">{preview}</p>

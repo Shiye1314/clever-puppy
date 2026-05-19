@@ -21,27 +21,32 @@ export default function SellingPointInput({ points, onChange }: Props) {
   };
 
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-2">
       {points.map((point, i) => (
-        <div key={i} className="flex items-center gap-1.5">
+        <div key={i} className="flex items-center gap-2">
           <input
             type="text"
             value={point}
             onChange={(e) => handleChange(i, e.target.value)}
             placeholder={`核心卖点 ${i + 1}`}
-            className="flex-1 prose-input text-sm"
+            className="flex-1 rounded-[16px] border border-border bg-surface px-4 py-2.5 text-[20px] text-ink
+                       placeholder:text-muted/40
+                       focus:outline-none focus:border-amber/50 focus:ring-1 focus:ring-amber/20
+                       transition-colors duration-200"
           />
           {points.length > 2 && (
             <button
               onClick={() => handleRemove(i)}
-              className="text-muted hover:text-red-500 text-xs transition-colors"
+              className="w-8 h-8 flex items-center justify-center rounded-md text-muted/30 hover:text-muted hover:bg-border/30 transition-colors flex-shrink-0"
             >
-              ✕
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                <path d="M3 3l8 8M11 3l-8 8" />
+              </svg>
             </button>
           )}
         </div>
       ))}
-      {/* 新增的空白输入 */}
+      {/* 新增空白输入 */}
       <input
         type="text"
         value=""
@@ -49,7 +54,10 @@ export default function SellingPointInput({ points, onChange }: Props) {
           if (e.target.value) handleChange(points.length, e.target.value);
         }}
         placeholder={`核心卖点 ${points.length + 1}`}
-        className="w-full prose-input text-sm"
+        className="w-full rounded-[16px] border border-border bg-surface px-4 py-2.5 text-[20px] text-ink
+                   placeholder:text-muted/40
+                   focus:outline-none focus:border-amber/50 focus:ring-1 focus:ring-amber/20
+                   transition-colors duration-200"
       />
     </div>
   );

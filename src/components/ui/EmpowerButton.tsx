@@ -11,30 +11,21 @@ export default function EmpowerButton({ onClick, loading }: Props) {
       onClick={onClick}
       disabled={loading}
       className={`
-        relative px-8 py-3 text-sm tracking-[0.2em] border transition-all duration-300
+        w-full px-6 py-3 text-[32px] font-medium rounded-[16px] transition-all duration-300
         disabled:cursor-wait
         ${loading
-          ? "border-amber text-amber animate-breathe"
-          : "border-muted/30 text-muted hover:text-amber hover:border-amber"
+          ? "bg-amber/80 text-white animate-breathe"
+          : "bg-amber text-white hover:bg-amber/90 active:scale-[0.98]"
         }
       `}
-      style={{
-        background: loading
-          ? "linear-gradient(90deg, transparent 0%, rgba(200,146,43,0.06) 50%, transparent 100%)"
-          : "transparent",
-        backgroundSize: "200% 100%",
-        animation: loading
-          ? "flowLine 1.5s ease-in-out infinite, breathe 2s ease-in-out infinite"
-          : undefined,
-      }}
     >
       {loading ? (
-        <span className="inline-flex items-center gap-2">
-          <span className="w-1.5 h-1.5 bg-amber rounded-full animate-pulse" />
-          赋能中...
+        <span className="inline-flex items-center justify-center gap-2">
+          <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
+          生成中...
         </span>
       ) : (
-        "✦ 爆文赋能启动 ✦"
+        "生成"
       )}
     </button>
   );
