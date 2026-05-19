@@ -79,7 +79,7 @@ export default function StylePage() {
   return (
     <div className="flex h-[calc(100vh-56px)]">
       {/* 左侧 — 导入 + 档案 */}
-      <div className="flex-1 overflow-y-auto pl-10 pr-8 py-12">
+      <div className="flex-1 flex justify-center overflow-y-auto pl-6 pr-4 py-12">
         <div className="max-w-[620px]">
           <h1 className="font-serif text-[28px] leading-tight text-ink mb-10">风格 DNA</h1>
 
@@ -199,7 +199,7 @@ export default function StylePage() {
       </div>
 
       {/* 右侧 — 大类管理 */}
-      <div className="w-[420px] flex-shrink-0 overflow-y-auto bg-paper/50 pl-6 pr-8 py-12">
+      <div className="w-[480px] flex-shrink-0 overflow-y-auto bg-paper/50 pl-6 pr-10 py-12">
         <h2 className="text-[13px] tracking-[0.15em] text-muted/70 uppercase mb-1.5">大类管理</h2>
         <p className="text-[12px] text-muted/50 leading-relaxed mb-8">
           每个品类独立学习你的写作风格，投喂越多，模仿越精准
@@ -210,15 +210,16 @@ export default function StylePage() {
             <div
               key={cat.id}
               onClick={() => handleViewCategory(cat.id)}
-              className="group px-5 py-4 border border-border/50 hover:border-amber/30 cursor-pointer transition-all duration-200"
+              className="group px-5 py-4 border border-border/50 cursor-pointer transition-all duration-300
+                         hover:bg-amber hover:border-amber"
             >
               <div className="flex items-end justify-between">
-                <span className="text-[15px] text-ink font-serif">{cat.name}</span>
-                <span className="text-[36px] leading-none text-muted/15 tabular-nums font-serif">
+                <span className="text-[15px] text-ink font-serif group-hover:text-white transition-colors duration-300">{cat.name}</span>
+                <span className="text-[36px] leading-none text-muted/15 tabular-nums font-serif group-hover:text-white/60 transition-colors duration-300">
                   {cat.writing_samples_count}
                 </span>
               </div>
-              <p className="text-[11px] text-muted/40 mt-1.5">
+              <p className="text-[11px] text-muted/40 mt-1.5 group-hover:text-white/50 transition-colors duration-300">
                 {new Date(cat.updated_at).toLocaleDateString("zh-CN")}
               </p>
             </div>
