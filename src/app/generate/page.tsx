@@ -7,7 +7,8 @@ import ArticleResult from "@/components/generate/ArticleResult";
 import CategorySelector from "@/components/generate/CategorySelector";
 import AgentStatus from "@/components/generate/AgentStatus";
 import EmpowerButton from "@/components/ui/EmpowerButton";
-import type { ProductCard, ArticleSections } from "@/lib/types";
+import type { ProductCard } from "@/lib/types";
+import type { ArticleSectionsV2 } from "@/lib/agents/generator";
 import { supabase } from "@/lib/supabase/client";
 
 const emptyCard: ProductCard = {
@@ -18,17 +19,15 @@ const emptyCard: ProductCard = {
   competitorDiff: "",
 };
 
-const emptySections: ArticleSections = {
-  hook: "",
-  transition: "",
-  sellingPoints: "",
+const emptySections: ArticleSectionsV2 = {
+  painPoint: "", transition: "", productIntro: "", brandIntro: "", ctaHook: "",
 };
 
 export default function GeneratePage() {
   const [rawContent, setRawContent] = useState("");
   const [fileName, setFileName] = useState("");
   const [card, setCard] = useState<ProductCard>(emptyCard);
-  const [sections, setSections] = useState<ArticleSections>(emptySections);
+  const [sections, setSections] = useState<ArticleSectionsV2>(emptySections);
   const [extracting, setExtracting] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [rewriting, setRewriting] = useState<string | null>(null);
@@ -109,7 +108,7 @@ export default function GeneratePage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            content: `${data.card.productName} ${data.card.sellingPoints?.join(" ")} ${data.sections?.hook || ""}`
+            content: `${data.card.productName} ${data.card.sellingPoints?.join(" ")} ${data.sections?.painPoint || ""}`
           }),
         }).then((r) => r.json()).then((c) => {
           if (c.categoryId && !c.error) setSelectedCategory(c.categoryId);
@@ -121,7 +120,7 @@ export default function GeneratePage() {
     setGenerating(false);
   };
 
-  const handleRewriteSection = async (name: "hook" | "transition" | "sellingPoints") => {
+  const handleRewriteSection = async (name: "painPoint" | "transition" | "productIntro" | "brandIntro" | "ctaHook") => {
     setRewriting(name);
     try {
       const res = await fetch("/api/rewrite-section", {
@@ -194,7 +193,7 @@ export default function GeneratePage() {
       <div className="w-[60%] overflow-y-auto p-8">
         <p className="text-xs text-muted uppercase tracking-wider mb-6">Step 3 · 爆文输出</p>
         <AgentStatus agents={agentStatus} generating={generating} />
-        {sections.hook || sections.transition || sections.sellingPoints ? (
+        {sections.painPoint || sections.transition || sections.productIntro ? (
           <>
             <ArticleResult
               sections={sections}

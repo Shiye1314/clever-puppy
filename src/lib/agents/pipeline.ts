@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { extractProductCard } from "./extractor";
-import { generateArticle, rewriteSection } from "./generator";
-import type { ProductCard, ArticleSections, StyleDNA } from "../types";
+import { generateArticle, rewriteSection, type ArticleSectionsV2 } from "./generator";
+import type { ProductCard, StyleDNA } from "../types";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -120,8 +120,8 @@ export async function runGeneratePipeline(
 }
 
 export async function runRewriteSection(
-  sections: ArticleSections,
-  sectionName: "hook" | "transition" | "sellingPoints",
+  sections: ArticleSectionsV2,
+  sectionName: "painPoint" | "transition" | "productIntro" | "brandIntro" | "ctaHook",
   categoryId?: string
 ) {
   const { data: settings } = await supabaseAdmin
@@ -145,7 +145,7 @@ export async function runRewriteSection(
   }
 
   const currentContent = sections[sectionName];
-  const anchorSections: Partial<ArticleSections> = { ...sections };
+  const anchorSections: Partial<ArticleSectionsV2> = { ...sections };
   delete (anchorSections as Record<string, string>)[sectionName];
 
   const newContent = await rewriteSection(

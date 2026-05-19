@@ -8,11 +8,20 @@ export interface ProductCard {
   brandTone?: string;
 }
 
-// 三段式爆文
+// 三段式爆文（旧版，保持向后兼容）
 export interface ArticleSections {
   hook: string;
   transition: string;
   sellingPoints: string;
+}
+
+// 五段式爆文（升级版，匹配真实写作结构）
+export interface ArticleSectionsV2 {
+  painPoint: string;    // 痛点场景
+  transition: string;   // 转折引入产品
+  productIntro: string; // 产品介绍（卖点展开）
+  brandIntro: string;   // 品牌背书
+  ctaHook: string;      // CTA钩子
 }
 
 // 生成结果

@@ -1,54 +1,48 @@
 "use client";
 
 import SectionEditor from "./SectionEditor";
-import type { ArticleSections } from "@/lib/types";
+import type { ArticleSectionsV2 } from "@/lib/agents/generator";
 
 interface Props {
-  sections: ArticleSections;
-  onChange: (sections: ArticleSections) => void;
-  onRewriteSection: (name: "hook" | "transition" | "sellingPoints") => void;
+  sections: ArticleSectionsV2;
+  onChange: (sections: ArticleSectionsV2) => void;
+  onRewriteSection: (name: keyof ArticleSectionsV2) => void;
   loading: string | null;
 }
 
 export default function ArticleResult({ sections, onChange, onRewriteSection, loading }: Props) {
-  const update = (field: keyof ArticleSections, value: string) => {
+  const update = (field: keyof ArticleSectionsV2, value: string) => {
     onChange({ ...sections, [field]: value });
   };
 
-  const fullText = `${sections.hook}\n\n${sections.transition}\n\n${sections.sellingPoints}`;
+  const fullText = `${sections.painPoint}\n\n${sections.transition}\n\n${sections.productIntro}\n\n${sections.brandIntro}\n\n${sections.ctaHook}`;
+
+  const editors: Array<{ key: keyof ArticleSectionsV2; label: string }> = [
+    { key: "painPoint", label: "痛点场景" },
+    { key: "transition", label: "转折引入" },
+    { key: "productIntro", label: "产品介绍" },
+    { key: "brandIntro", label: "品牌背书" },
+    { key: "ctaHook", label: "CTA 钩子" },
+  ];
 
   return (
-    <div className="space-y-6">
-      <SectionEditor
-        label="🪝 钩子段"
-        content={sections.hook}
-        onChange={(v) => update("hook", v)}
-        onRewrite={() => onRewriteSection("hook")}
-        loading={loading === "hook"}
-      />
-
-      <SectionEditor
-        label="🔀 过渡段"
-        content={sections.transition}
-        onChange={(v) => update("transition", v)}
-        onRewrite={() => onRewriteSection("transition")}
-        loading={loading === "transition"}
-      />
-
-      <SectionEditor
-        label="💎 卖点段"
-        content={sections.sellingPoints}
-        onChange={(v) => update("sellingPoints", v)}
-        onRewrite={() => onRewriteSection("sellingPoints")}
-        loading={loading === "sellingPoints"}
-      />
-
-      <div className="flex gap-4 pt-4">
+    <div className="space-y-5">
+      {editors.map(({ key, label }) => (
+        <SectionEditor
+          key={key}
+          label={label}
+          content={sections[key]}
+          onChange={(v) => update(key, v)}
+          onRewrite={() => onRewriteSection(key)}
+          loading={loading === key}
+        />
+      ))}
+      <div className="flex gap-4 pt-2">
         <button
           onClick={() => navigator.clipboard.writeText(fullText)}
           className="text-xs text-muted hover:text-amber transition-colors"
         >
-          📋 复制全文
+          复制全文
         </button>
       </div>
     </div>
