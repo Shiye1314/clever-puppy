@@ -80,7 +80,7 @@ export default function StylePage() {
     <div className="flex h-[calc(100vh-56px)]">
       {/* 左侧 — 导入 + 档案 */}
       <div className="flex-1 flex justify-center overflow-y-auto pl-6 pr-4 py-12">
-        <div className="max-w-[620px]">
+        <div className="max-w-[720px] w-full">
           <h1 className="font-serif text-[28px] leading-tight text-ink mb-10">风格 DNA</h1>
 
           {/* 导入范文 */}
