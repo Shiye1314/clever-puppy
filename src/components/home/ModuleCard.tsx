@@ -11,15 +11,15 @@ interface Props {
 export default function ModuleCard({ icon, title, subtitle, href, disabled }: Props) {
   const Card = (
     <div
-      className={`rounded-[16px] border border-border bg-paper p-8 transition-all duration-200 ${
+      className={`rounded-lg border border-border bg-paper p-4 transition-all duration-200 ${
         disabled
           ? "opacity-40 cursor-not-allowed"
           : "cursor-pointer hover:border-amber hover:bg-amber/[0.02]"
       }`}
     >
-      <span className="text-[60px] leading-none">{icon}</span>
-      <h2 className="mt-5 text-[40px] font-semibold text-ink">{title}</h2>
-      <p className="mt-2 text-[32px] leading-relaxed text-muted">{subtitle}</p>
+      <span className="text-[30px] leading-none">{icon}</span>
+      <h2 className="mt-3 text-[20px] font-semibold text-ink">{title}</h2>
+      <p className="mt-1 text-[16px] leading-relaxed text-muted">{subtitle}</p>
     </div>
   );
 

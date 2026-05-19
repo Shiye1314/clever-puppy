@@ -33,13 +33,13 @@ export default function HistorySidebar({ onSelectTask }: Props) {
 
   return (
     <aside
-      className={`fixed left-0 top-[135px] bottom-0 z-30 border-r border-border bg-paper transition-all duration-300 ${
-        expanded ? "w-60" : "w-[72px]"
+      className={`fixed left-0 top-[64px] bottom-0 z-30 border-r border-border bg-paper transition-all duration-300 ${
+        expanded ? "w-[120px]" : "w-[36px]"
       }`}
     >
       <button
         onClick={() => setExpanded(!expanded)}
-        className="flex h-10 w-full items-center justify-center border-b border-border text-muted/60 hover:text-ink transition-colors"
+        className="flex h-5 w-full items-center justify-center border-b border-border text-muted/60 hover:text-ink transition-colors"
         title={expanded ? "收起" : "展开"}
       >
         {expanded ? (
@@ -54,27 +54,27 @@ export default function HistorySidebar({ onSelectTask }: Props) {
       </button>
 
       {expanded && (
-        <div className="overflow-y-auto h-[calc(100%-40px)]">
-          <p className="px-4 py-3 text-[28px] text-muted/50 font-medium tracking-wide">
+        <div className="overflow-y-auto h-[calc(100%-20px)]">
+          <p className="px-2 py-1.5 text-[14px] text-muted/50 font-medium tracking-wide">
             历史记录
           </p>
           {tasks.map((task) => (
             <div
               key={task.id}
               onClick={() => onSelectTask(task)}
-              className="group flex items-center justify-between px-4 py-2.5 cursor-pointer hover:bg-amber/[0.04] transition-colors"
+              className="group flex items-center justify-between px-2 py-1.5 cursor-pointer hover:bg-amber/[0.04] transition-colors"
             >
               <div className="min-w-0 flex-1">
-                <p className="text-[28px] text-ink truncate leading-snug">
+                <p className="text-[14px] text-ink truncate leading-snug">
                   {task.title || task.task_type}
                 </p>
-                <p className="text-[26px] text-muted/50 mt-0.5">
+                <p className="text-[13px] text-muted/50 mt-0.5">
                   {new Date(task.created_at).toLocaleDateString("zh-CN")}
                 </p>
               </div>
               <button
                 onClick={(e) => handleDelete(task.id, e)}
-                className="ml-2 text-muted/40 opacity-0 group-hover:opacity-100 hover:text-red-500 transition-all text-[28px] shrink-0"
+                className="ml-1 text-muted/40 opacity-0 group-hover:opacity-100 hover:text-red-500 transition-all text-[14px] shrink-0"
                 title="删除"
               >
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -84,7 +84,7 @@ export default function HistorySidebar({ onSelectTask }: Props) {
             </div>
           ))}
           {tasks.length === 0 && (
-            <p className="px-4 py-10 text-[28px] text-muted/30 text-center">
+            <p className="px-2 py-5 text-[14px] text-muted/30 text-center">
               暂无记录
             </p>
           )}

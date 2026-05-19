@@ -5,12 +5,12 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        paper: "#FAF8F5",
-        ink: "#2C2416",
-        amber: "#C8922B",
-        "amber-light": "#E8C560",
-        muted: "#8C8579",
-        border: "#E5E0D8",
+        paper: "#FAFBFC",
+        ink: "#171717",
+        amber: "#2563EB",
+        "amber-light": "#60A5FA",
+        muted: "#737373",
+        border: "#E5E5E5",
       },
       fontFamily: {
         serif: ["Noto Serif SC", "Georgia", "serif"],
@@ -30,8 +30,8 @@ const config: Config = {
           "100%": { backgroundPosition: "-200% 0" },
         },
         breathe: {
-          "0%, 100%": { boxShadow: "0 0 0 0 rgba(200, 146, 43, 0)" },
-          "50%": { boxShadow: "0 0 0 4px rgba(200, 146, 43, 0.12)" },
+          "0%, 100%": { boxShadow: "0 0 0 0 rgba(37, 99, 235, 0)" },
+          "50%": { boxShadow: "0 0 0 4px rgba(37, 99, 235, 0.12)" },
         },
       },
     },

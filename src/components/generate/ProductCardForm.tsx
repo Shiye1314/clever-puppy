@@ -15,9 +15,9 @@ export default function ProductCardForm({ card, onChange, loading }: Props) {
   };
 
   return (
-    <div className="space-y-5">
-      <label className="block space-y-1.5">
-        <span className="text-[20px] font-medium text-muted/70">
+    <div className="space-y-2.5">
+      <label className="block space-y-0.5">
+        <span className="text-[14px] font-medium text-muted/70">
           产品名
         </span>
         <input
@@ -25,15 +25,15 @@ export default function ProductCardForm({ card, onChange, loading }: Props) {
           value={card.productName}
           onChange={(e) => update("productName", e.target.value)}
           placeholder="产品名称"
-          className="w-full rounded-[16px] border border-border bg-surface px-4 py-2.5 text-[20px] text-ink
+          className="w-full rounded-lg border border-border bg-surface px-2 py-1.5 text-[14px] text-ink
                      placeholder:text-muted/40
                      focus:outline-none focus:border-amber/50 focus:ring-1 focus:ring-amber/20
                      transition-colors duration-200"
         />
       </label>
 
-      <label className="block space-y-1.5">
-        <span className="text-[20px] font-medium text-muted/70">
+      <label className="block space-y-0.5">
+        <span className="text-[14px] font-medium text-muted/70">
           核心卖点
         </span>
         <SellingPointInput
@@ -42,8 +42,8 @@ export default function ProductCardForm({ card, onChange, loading }: Props) {
         />
       </label>
 
-      <label className="block space-y-1.5">
-        <span className="text-[20px] font-medium text-muted/70">
+      <label className="block space-y-0.5">
+        <span className="text-[14px] font-medium text-muted/70">
           人群痛点
         </span>
         <input
@@ -51,15 +51,15 @@ export default function ProductCardForm({ card, onChange, loading }: Props) {
           value={card.targetPainPoint}
           onChange={(e) => update("targetPainPoint", e.target.value)}
           placeholder="目标受众的核心痛点"
-          className="w-full rounded-[16px] border border-border bg-surface px-4 py-2.5 text-[20px] text-ink
+          className="w-full rounded-lg border border-border bg-surface px-2 py-1.5 text-[14px] text-ink
                      placeholder:text-muted/40
                      focus:outline-none focus:border-amber/50 focus:ring-1 focus:ring-amber/20
                      transition-colors duration-200"
         />
       </label>
 
-      <label className="block space-y-1.5">
-        <span className="text-[20px] font-medium text-muted/70">
+      <label className="block space-y-0.5">
+        <span className="text-[14px] font-medium text-muted/70">
           使用场景
         </span>
         <input
@@ -67,15 +67,15 @@ export default function ProductCardForm({ card, onChange, loading }: Props) {
           value={card.usageScenario}
           onChange={(e) => update("usageScenario", e.target.value)}
           placeholder="产品使用场景"
-          className="w-full rounded-[16px] border border-border bg-surface px-4 py-2.5 text-[20px] text-ink
+          className="w-full rounded-lg border border-border bg-surface px-2 py-1.5 text-[14px] text-ink
                      placeholder:text-muted/40
                      focus:outline-none focus:border-amber/50 focus:ring-1 focus:ring-amber/20
                      transition-colors duration-200"
         />
       </label>
 
-      <label className="block space-y-1.5">
-        <span className="text-[20px] font-medium text-muted/70">
+      <label className="block space-y-0.5">
+        <span className="text-[14px] font-medium text-muted/70">
           竞品差异
         </span>
         <input
@@ -83,7 +83,7 @@ export default function ProductCardForm({ card, onChange, loading }: Props) {
           value={card.competitorDiff}
           onChange={(e) => update("competitorDiff", e.target.value)}
           placeholder="与竞品的差异化优势"
-          className="w-full rounded-[16px] border border-border bg-surface px-4 py-2.5 text-[20px] text-ink
+          className="w-full rounded-lg border border-border bg-surface px-2 py-1.5 text-[14px] text-ink
                      placeholder:text-muted/40
                      focus:outline-none focus:border-amber/50 focus:ring-1 focus:ring-amber/20
                      transition-colors duration-200"

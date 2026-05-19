@@ -7,6 +7,7 @@ import ArticleResult from "@/components/generate/ArticleResult";
 import CategorySelector from "@/components/generate/CategorySelector";
 import AgentStatus from "@/components/generate/AgentStatus";
 import EmpowerButton from "@/components/ui/EmpowerButton";
+import StarBorder from "@/components/ui/StarBorder";
 import type { ProductCard } from "@/lib/types";
 import type { ArticleSectionsV2 } from "@/lib/agents/generator";
 import { supabase } from "@/lib/supabase/client";
@@ -88,12 +89,12 @@ export default function GeneratePage() {
       setSections(data.sections);
       setCard(data.card);
 
-      // 保存历史
+      // 自动保存历史
       const { data: task } = await supabase.from("tasks").insert({
         task_type: "generate",
         module: "generate",
-        title: card.productName || fileName || "素材生成",
-        input_data: { rawContent, fileName, productCard: card },
+        title: data.card.productName || fileName || "素材生成",
+        input_data: { rawContent, fileName, productCard: data.card },
         product_card: data.card,
         output_data: data.sections,
         metadata: {},
@@ -145,7 +146,18 @@ export default function GeneratePage() {
   };
 
   const handleSave = async () => {
-    if (currentTaskId) return;
+    if (currentTaskId) {
+      // 已存在记录 → 更新
+      const { error } = await supabase.from("tasks").update({
+        product_card: card,
+        output_data: sections,
+        category_id: selectedCategory || null,
+        updated_at: new Date().toISOString(),
+      }).eq("id", currentTaskId);
+      if (!error) alert("已更新历史记录");
+      else alert("更新失败: " + error.message);
+      return;
+    }
 
     const { data: task } = await supabase.from("tasks").insert({
       task_type: "generate",
@@ -163,21 +175,21 @@ export default function GeneratePage() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-135px)]">
+    <div className="flex h-[calc(100vh-64px)]">
       {/* 操作区 40% */}
-      <div className="w-[40%] min-w-[440px] border-r border-border overflow-y-auto scrollbar-hide p-10 space-y-10">
+      <div className="w-[40%] min-w-[220px] border-r border-border overflow-y-auto scrollbar-hide p-5 space-y-5">
         {/* Step 1 */}
         <section>
-          <div className="flex items-center gap-2 mb-4">
-            <span className="w-1 h-4 rounded-full bg-amber flex-shrink-0" />
-            <span className="text-[32px] font-medium text-ink">上传资料</span>
+          <div className="flex items-center gap-1 mb-2">
+            <span className="w-0.5 h-2 rounded-full bg-amber flex-shrink-0" />
+            <span className="text-[16px] font-medium text-ink">上传资料</span>
           </div>
-          <div className="rounded-xl bg-surface border border-border p-5 space-y-4">
+          <div className="rounded-xl bg-surface border border-border p-3 space-y-2">
             <UploadZone onTextReady={handleTextReady} />
             <button
               onClick={handleExtract}
               disabled={!rawContent || extracting}
-              className="text-[32px] text-amber hover:text-amber/80 transition-colors disabled:opacity-30 font-medium"
+              className="text-[16px] text-amber hover:text-amber/80 transition-colors disabled:opacity-30 font-medium"
             >
               {extracting ? "提炼中..." : "整理信息 →"}
             </button>
@@ -186,31 +198,33 @@ export default function GeneratePage() {
 
         {/* Step 2 */}
         <section>
-          <div className="flex items-center gap-2 mb-4">
-            <span className="w-1 h-4 rounded-full bg-amber flex-shrink-0" />
-            <span className="text-[32px] font-medium text-ink">产品信息卡</span>
+          <div className="flex items-center gap-1 mb-2">
+            <span className="w-0.5 h-2 rounded-full bg-amber flex-shrink-0" />
+            <span className="text-[16px] font-medium text-ink">产品信息卡</span>
           </div>
-          <div className="rounded-xl bg-surface border border-border p-5 space-y-6">
+          <div className="rounded-xl bg-surface border border-border p-3 space-y-3">
             <ProductCardForm card={card} onChange={setCard} loading={extracting} />
 
-            <div className="flex items-center gap-2 pt-2">
-              <span className="w-1 h-4 rounded-full bg-amber flex-shrink-0" />
-              <span className="text-[20px] font-medium text-muted/70">写作风格</span>
+            <div className="flex items-center gap-1 pt-1">
+              <span className="w-0.5 h-2 rounded-full bg-amber flex-shrink-0" />
+              <span className="text-[14px] font-medium text-muted/70">写作风格</span>
             </div>
             <CategorySelector value={selectedCategory} onChange={setSelectedCategory} />
 
-            <div className="pt-2">
-              <EmpowerButton onClick={handleGenerate} loading={generating} />
+            <div className="py-3">
+              <StarBorder as="div" color="#60a5fa" speed="5s" className="w-full">
+                <EmpowerButton onClick={handleGenerate} loading={generating} />
+              </StarBorder>
             </div>
           </div>
         </section>
       </div>
 
       {/* 结果区 60% */}
-      <div className="w-[60%] overflow-y-auto p-10">
-        <div className="flex items-center gap-2 mb-6">
-          <span className="w-1 h-4 rounded-full bg-amber flex-shrink-0" />
-          <span className="text-[32px] font-medium text-ink">爆文输出</span>
+      <div className="w-[60%] overflow-y-auto p-5">
+        <div className="flex items-center gap-1 mb-3">
+          <span className="w-0.5 h-2 rounded-full bg-amber flex-shrink-0" />
+          <span className="text-[16px] font-medium text-ink">爆文输出</span>
         </div>
 
         <AgentStatus agents={agentStatus} generating={generating} />
@@ -225,14 +239,14 @@ export default function GeneratePage() {
             />
             <button
               onClick={handleSave}
-              className="mt-8 text-[32px] text-muted/60 hover:text-amber transition-colors font-medium"
+              className="mt-4 text-[16px] text-muted/60 hover:text-amber transition-colors font-medium"
             >
               保存到历史
             </button>
           </>
         ) : (
-          <div className="rounded-xl bg-surface border border-border p-16 text-center mt-4">
-            <p className="text-[20px] text-muted/40 leading-relaxed">
+          <div className="rounded-xl bg-surface border border-border p-8 text-center mt-2">
+            <p className="text-[14px] text-muted/40 leading-relaxed">
               点击"生成"后此处显示生成结果
             </p>
           </div>

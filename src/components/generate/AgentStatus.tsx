@@ -63,12 +63,12 @@ export default function AgentStatus({ agents, generating }: Props) {
   };
 
   return (
-    <div className="rounded-xl bg-surface border border-border p-4 mb-6">
+    <div className="rounded-xl bg-surface border border-border p-2 mb-3">
       <div className="flex items-center gap-0">
         {stages.map((stage, i) => (
           <div key={stage.name} className="flex items-center gap-0 flex-1 last:flex-none">
             <div
-              className={`flex items-center gap-2.5 py-1 px-2 rounded-md transition-colors duration-500 ${
+              className={`flex items-center gap-1.5 py-1 px-2 rounded-md transition-colors duration-500 ${
                 stage.status === "done"
                   ? "text-ink"
                   : stage.status === "running"
@@ -77,13 +77,13 @@ export default function AgentStatus({ agents, generating }: Props) {
               }`}
             >
               {statusDot(stage.status)}
-              <span className="text-[28px] font-medium whitespace-nowrap">{stage.name}</span>
+              <span className="text-[14px] font-medium whitespace-nowrap">{stage.name}</span>
               {stage.status === "done" && stage.summary && (
-                <span className="text-muted/50 text-[26px] truncate max-w-[120px]">{stage.summary}</span>
+                <span className="text-muted/50 text-[13px] truncate max-w-[60px]">{stage.summary}</span>
               )}
             </div>
             {i < stages.length - 1 && (
-              <div className={`flex-1 h-px mx-1 min-w-[16px] transition-colors duration-500 ${
+              <div className={`flex-1 h-px mx-1 min-w-[8px] transition-colors duration-500 ${
                 stage.status === "done" ? "bg-amber/30" : "bg-border/50"
               }`} />
             )}

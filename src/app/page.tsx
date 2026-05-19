@@ -23,20 +23,20 @@ const modules = [
 
 export default function Home() {
   return (
-    <div className="flex min-h-[calc(100vh-135px)] items-center justify-center px-6">
+    <div className="flex min-h-[calc(100vh-64px)] items-center justify-center px-6">
       <div className="w-full max-w-4xl">
         {/* Hero */}
-        <header className="mb-20 text-center">
-          <h1 className="text-[120px] font-bold text-ink tracking-tight">
+        <header className="mb-10 text-center">
+          <h1 className="text-[60px] font-bold text-ink tracking-tight">
             Clever-Puppy
           </h1>
-          <p className="mt-4 text-[20px] text-muted">
+          <p className="mt-2 text-[14px] text-muted">
             你的小红书写作外脑
           </p>
         </header>
 
         {/* Module Grid */}
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           {modules.map((m) => (
             <ModuleCard key={m.href} {...m} />
           ))}

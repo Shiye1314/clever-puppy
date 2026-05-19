@@ -26,9 +26,9 @@ export default function ArticleResult({ sections, onChange, onRewriteSection, lo
   ];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2">
       {editors.map(({ key, label }) => (
-        <div key={key} className="rounded-xl bg-surface border border-border p-5">
+        <div key={key} className="rounded-xl bg-surface border border-border p-3">
           <SectionEditor
             label={label}
             content={sections[key]}
@@ -38,10 +38,10 @@ export default function ArticleResult({ sections, onChange, onRewriteSection, lo
           />
         </div>
       ))}
-      <div className="pt-2">
+      <div className="pt-1">
         <button
           onClick={() => navigator.clipboard.writeText(fullText)}
-          className="text-[28px] text-muted/50 hover:text-amber transition-colors font-medium"
+          className="text-[14px] text-muted/50 hover:text-amber transition-colors font-medium"
         >
           复制全文
         </button>

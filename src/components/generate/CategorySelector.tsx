@@ -30,14 +30,14 @@ export default function CategorySelector({ value, onChange }: Props) {
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-[16px] border border-border bg-surface px-4 py-2.5 text-[20px] text-ink
+        className="w-full rounded-lg border border-border bg-surface px-2 py-1.5 text-[14px] text-ink
                    focus:outline-none focus:border-amber/50 focus:ring-1 focus:ring-amber/20
                    transition-colors duration-200 appearance-none cursor-pointer"
         style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23737373' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`,
           backgroundRepeat: "no-repeat",
-          backgroundPosition: "right 14px center",
-          paddingRight: "36px",
+          backgroundPosition: "right 7px center",
+          paddingRight: "18px",
         }}
       >
         <option value="">通用（全局风格）</option>
