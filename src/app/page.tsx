@@ -8,20 +8,6 @@ const modules = [
     href: "/generate",
   },
   {
-    icon: "🔄",
-    title: "品牌洗稿",
-    subtitle: "选择品牌模板，基于新想法改写爆文",
-    href: "/rewrite",
-    disabled: true,
-  },
-  {
-    icon: "📚",
-    title: "品牌资产库",
-    subtitle: "管理品牌档案、模板与范文",
-    href: "/brands",
-    disabled: true,
-  },
-  {
     icon: "📝",
     title: "风格 DNA",
     subtitle: "管理你的写作风格档案",

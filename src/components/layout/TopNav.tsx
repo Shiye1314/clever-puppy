@@ -5,8 +5,6 @@ import { usePathname } from "next/navigation";
 
 const navItems = [
   { href: "/generate", label: "素材生成" },
-  { href: "/rewrite", label: "品牌洗稿" },
-  { href: "/brands", label: "品牌资产" },
   { href: "/style", label: "风格DNA" },
 ];
 
