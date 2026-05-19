@@ -94,7 +94,7 @@ export async function POST(request: Request) {
       const classifyPrompt = CLASSIFY_PROMPT.replace("{content}", article.slice(0, 2000));
       const classifyText = await callLLM({
         prompt: classifyPrompt,
-        model: "claude-haiku-4-5",
+        model: "deepseek-v4-pro",
         maxTokens: 256,
         provider: provider as any,
         apiKey,
@@ -165,7 +165,7 @@ export async function POST(request: Request) {
 
       const styleText = await callLLM({
         prompt: stylePrompt,
-        model: "claude-sonnet-4-6",
+        model: "deepseek-v4-pro",
         maxTokens: 2048,
         provider: provider as any,
         apiKey,
