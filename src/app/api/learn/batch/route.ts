@@ -1,70 +1,18 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { callLLM, extractJSON } from "@/lib/llm/client";
+import { BRAND_EXTRACT_PROMPT, NICHE_CLASSIFY_PROMPT, STYLE_ANALYSIS_PROMPT } from "@/lib/agents/prompts";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-const CLASSIFY_PROMPT = `你是一个内容分类专家。请分析以下小红书文案，判断它属于什么品类/赛道。
-
-文案内容：
-{content}
-
-请识别该文案的品类分类。分类规则：
-1. 只归类到大类，不要细分。比如：公务员考试/国考/省考→都归「公考」；数学/英语/语文等学科→都归「学科教育」；国内游/出境游/定制游→都归「旅游」；烘焙/咖啡/西点→都归「技能培训」；法考/考研/留学→都归「升学考证」
-2. 品类命名简短（2-4个字），例如：
-- 旅游
-- 学科教育
-- 公考
-- 技能培训
-- 升学考证
-- 企业服务
-
-输出格式（严格JSON）：
-{
-  "categoryName": "品类名"
-}`;
-
-const STYLE_ANALYSIS_PROMPT = `你是一个写作风格分析师。请分析以下{count}篇同一品类（{categoryName}）的爆文范文，提炼出该品类下的写作DNA档案。
-
-{essays}
-
-请从以下维度分析并输出 JSON：
-
-{
-  "openings": {
-    "patterns": ["该品类常见的开头句式模板"],
-    "styles": ["情绪引入式/好奇式/数字提纲式等"]
-  },
-  "closings": {
-    "patterns": ["该品类常见的结尾句式"],
-    "interaction_triggers": true/false
-  },
-  "paragraph_rhythm": {
-    "short_sentence_ratio": 0.0-1.0,
-    "exclamation_density": "low/medium/high",
-    "line_break_frequency": "low/medium/high"
-  },
-  "emoji_usage": {
-    "frequency": "low/medium/high",
-    "preferred": ["该品类常用emoji"],
-    "position": "paragraph_start/inline/mixed"
-  },
-  "pronouns": {
-    "first_person": "我/俺",
-    "second_person": "你/姐妹们/宝子们",
-    "style": "闺蜜口吻/专家口吻/朋友分享"
-  },
-  "title_formulas": ["该品类标题公式"],
-  "keywords_high_freq": ["该品类高频词"],
-  "tone": "该品类整体语气"
-}`;
-
 export async function POST(request: Request) {
-  const { content } = await request.json();
+  const { content, category_type } = await request.json();
   if (!content) return NextResponse.json({ error: "请提供范文内容" }, { status: 400 });
+
+  const mode = category_type === "brand" ? "brand" : "niche";
 
   // 获取 API key
   const { data: settings } = await supabaseAdmin
@@ -83,6 +31,129 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "未检测到有效文章（每篇需>50字，用 --- 分隔）" }, { status: 400 });
   }
 
+  // ============================================================
+  // 品牌大类模式
+  // ============================================================
+  if (mode === "brand") {
+    try {
+      // Step 1: 从所有文章中提取品牌名
+      const brandPrompt = BRAND_EXTRACT_PROMPT.replace(
+        "{essays}",
+        articles.map((a: string, i: number) => `[文章${i + 1}]\n${a.slice(0, 1500)}`).join("\n\n")
+      );
+      const brandText = await callLLM({
+        prompt: brandPrompt,
+        model: "deepseek-v4-pro",
+        maxTokens: 128,
+        provider: provider as any,
+        apiKey,
+      });
+      const { brandName } = extractJSON(brandText) as { brandName: string };
+
+      if (!brandName || brandName === "未识别") {
+        return NextResponse.json({ error: "未能从文章中识别出品牌名，请在投喂内容开头注明品牌名" }, { status: 400 });
+      }
+
+      // Step 2: 查重 — 仅在品牌大类中查找
+      const { data: existingBrands } = await supabaseAdmin
+        .from("categories")
+        .select("id, name, style_dna, writing_samples_count")
+        .ilike("name", `%${brandName}%`);
+
+      // 在品牌大类中匹配（style_dna->>category_type === "brand"）
+      const existingBrand = (existingBrands ?? []).find(
+        (b: Record<string, unknown>) =>
+          ((b.style_dna as Record<string, unknown>)?.category_type as string) === "brand"
+      );
+
+      let categoryId: string;
+      let isNew = false;
+
+      if (existingBrand) {
+        categoryId = existingBrand.id as string;
+      } else {
+        // 新建品牌大类
+        const { data: newCat, error: createErr } = await supabaseAdmin
+          .from("categories")
+          .insert({
+            name: brandName,
+            description: `品牌自动识别：${brandName}`,
+            style_dna: { category_type: "brand" },
+          })
+          .select()
+          .single();
+
+        if (createErr) {
+          return NextResponse.json({ error: "创建品牌失败: " + createErr.message }, { status: 500 });
+        }
+        categoryId = newCat!.id;
+        isNew = true;
+      }
+
+      // Step 3: 存入范文库（全部文章 → 同一个品牌分类）
+      for (const article of articles) {
+        await supabaseAdmin.from("writing_samples").insert({
+          content: article,
+          category_id: categoryId,
+          source_type: "upload",
+          title: article.slice(0, 50),
+        });
+      }
+
+      // Step 4: 持续学习 — 加载该品牌的所有历史范文（旧+新），一起分析
+      const { data: allSamples } = await supabaseAdmin
+        .from("writing_samples")
+        .select("content")
+        .eq("category_id", categoryId)
+        .order("created_at", { ascending: false });
+
+      const allArticles = allSamples?.map((s: { content: string }) => s.content) ?? [];
+      const totalCount = allArticles.length;
+
+      // Step 5: 风格DNA分析
+      const stylePrompt = STYLE_ANALYSIS_PROMPT
+        .replace(/\{count\}/g, String(totalCount))
+        .replace(/\{categoryLabel\}/g, "品牌")
+        .replace("{categoryName}", brandName)
+        .replace("{essays}", allArticles.map((a: string, i: number) => `[范文${i + 1}]\n${a}`).join("\n\n"));
+
+      const styleText = await callLLM({
+        prompt: stylePrompt,
+        model: "deepseek-v4-pro",
+        maxTokens: 2048,
+        provider: provider as any,
+        apiKey,
+      });
+      const dnaJson = extractJSON(styleText);
+      const mergedDna = { ...dnaJson, category_type: "brand" };
+
+      await supabaseAdmin
+        .from("categories")
+        .update({
+          style_dna: mergedDna,
+          writing_samples_count: totalCount,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", categoryId);
+
+      return NextResponse.json({
+        mode: "brand",
+        brandName,
+        categoryId,
+        isNewBrand: isNew,
+        totalArticles: articles.length,
+        totalAccumulated: totalCount,
+        dnaUpdated: 1,
+        categories: [{ categoryId, categoryName: brandName, articleCount: totalCount }],
+      });
+    } catch (err) {
+      return NextResponse.json({ error: "品牌学习失败: " + (err as Error).message }, { status: 500 });
+    }
+  }
+
+  // ============================================================
+  // 细分大类模式（原有逻辑）
+  // ============================================================
   const results: Array<{
     article: string;
     categoryName: string;
@@ -93,7 +164,7 @@ export async function POST(request: Request) {
   // Step 1: 逐篇分类
   for (const article of articles) {
     try {
-      const classifyPrompt = CLASSIFY_PROMPT.replace("{content}", article.slice(0, 2000));
+      const classifyPrompt = NICHE_CLASSIFY_PROMPT.replace("{content}", article.slice(0, 2000));
       const classifyText = await callLLM({
         prompt: classifyPrompt,
         model: "deepseek-v4-pro",
@@ -104,22 +175,34 @@ export async function POST(request: Request) {
       const result = extractJSON(classifyText);
       const { categoryName } = result as { categoryName: string };
 
-      // 检查是否已有该大类
-      const { data: existing } = await supabaseAdmin
+      // 检查是否已有该大类（仅在细分大类中查找）
+      const { data: existingNiche } = await supabaseAdmin
         .from("categories")
-        .select("id, name")
-        .ilike("name", `%${categoryName}%`)
-        .single();
+        .select("id, name, style_dna")
+        .ilike("name", `%${categoryName}%`);
+
+      const matchedNiche = (existingNiche ?? []).find(
+        (c: Record<string, unknown>) => {
+          const dna = c.style_dna as Record<string, unknown>;
+          const ct = dna?.category_type as string | undefined;
+          // 匹配 niche 或无标记的（兼容旧数据）
+          return ct === "niche" || !ct;
+        }
+      );
 
       let categoryId: string;
       let isNew = false;
 
-      if (existing) {
-        categoryId = existing.id;
+      if (matchedNiche) {
+        categoryId = matchedNiche.id as string;
       } else {
         const { data: newCat } = await supabaseAdmin
           .from("categories")
-          .insert({ name: categoryName, description: `自动识别：${categoryName}` })
+          .insert({
+            name: categoryName,
+            description: `自动识别：${categoryName}`,
+            style_dna: { category_type: "niche" },
+          })
           .select()
           .single();
         categoryId = newCat!.id;
@@ -136,12 +219,11 @@ export async function POST(request: Request) {
 
       results.push({ article: article.slice(0, 80), categoryName, categoryId, isNewCategory: isNew });
     } catch {
-      // 单篇失败不影响整体
       continue;
     }
   }
 
-  // Step 2: 按大类分组，提炼每个大类的风格DNA
+  // Step 2: 按大类分组，持续学习 — 每组加载所有历史范文
   const categoryGroups = new Map<string, string[]>();
   const categoryNames = new Map<string, string>();
 
@@ -159,11 +241,21 @@ export async function POST(request: Request) {
     if (categoryArticles.length < 1) continue;
 
     try {
-      // 用该分类的所有文章分析DNA
+      // 加载该分类的所有历史范文（持续学习）
+      const { data: allSamples } = await supabaseAdmin
+        .from("writing_samples")
+        .select("content")
+        .eq("category_id", categoryId)
+        .order("created_at", { ascending: false });
+
+      const allArticles = allSamples?.map((s: { content: string }) => s.content) ?? [];
+      const totalCount = allArticles.length;
+
       const stylePrompt = STYLE_ANALYSIS_PROMPT
-        .replace("{count}", String(categoryArticles.length))
+        .replace(/\{count\}/g, String(totalCount))
+        .replace(/\{categoryLabel\}/g, "品类")
         .replace("{categoryName}", categoryNames.get(categoryId) || "")
-        .replace("{essays}", categoryArticles.map((a, i) => `[范文${i + 1}]\n${a}`).join("\n\n"));
+        .replace("{essays}", allArticles.map((a: string, i: number) => `[范文${i + 1}]\n${a}`).join("\n\n"));
 
       const styleText = await callLLM({
         prompt: stylePrompt,
@@ -173,13 +265,13 @@ export async function POST(request: Request) {
         apiKey,
       });
       const dnaJson = extractJSON(styleText);
+      const mergedDna = { ...dnaJson, category_type: "niche" };
 
-      // 更新大类DNA和计数
       await supabaseAdmin
         .from("categories")
         .update({
-          style_dna: dnaJson,
-          writing_samples_count: categoryArticles.length,
+          style_dna: mergedDna,
+          writing_samples_count: totalCount,
           updated_at: new Date().toISOString(),
         })
         .eq("id", categoryId);
@@ -187,7 +279,7 @@ export async function POST(request: Request) {
       dnaResults.push({
         categoryId,
         categoryName: categoryNames.get(categoryId) || "",
-        articleCount: categoryArticles.length,
+        articleCount: totalCount,
       });
     } catch {
       continue;
@@ -195,6 +287,7 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json({
+    mode: "niche",
     totalArticles: articles.length,
     classified: results.length,
     categoriesFound: categoryGroups.size,

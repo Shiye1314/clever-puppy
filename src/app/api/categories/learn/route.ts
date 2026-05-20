@@ -63,18 +63,21 @@ export async function POST(request: Request) {
 
     const updatedDNA = extractJSON(text);
 
-    // 获取当前计数并递增
+    // 获取当前计数和类型
     const { data: currentCat } = await supabaseAdmin
       .from("categories")
-      .select("writing_samples_count")
+      .select("writing_samples_count, style_dna")
       .eq("id", categoryId)
       .single();
+
+    const existingType = (currentCat?.style_dna as Record<string, unknown>)?.category_type || "niche";
+    const mergedDna = { ...updatedDNA, category_type: existingType };
 
     // 更新大类DNA
     await supabaseAdmin
       .from("categories")
       .update({
-        style_dna: updatedDNA,
+        style_dna: mergedDna,
         writing_samples_count: (currentCat?.writing_samples_count ?? 0) + 1,
         updated_at: new Date().toISOString(),
       })

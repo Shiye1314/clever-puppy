@@ -38,10 +38,20 @@ export async function PUT(
   const { id } = await params;
   const updates = await request.json();
 
+  // 获取当前记录，保留 category_type
+  const { data: current } = await supabaseAdmin
+    .from("categories")
+    .select("style_dna")
+    .eq("id", id)
+    .single();
+
   const allowedFields: Record<string, unknown> = {};
   if (updates.name) allowedFields.name = updates.name;
   if (updates.description !== undefined) allowedFields.description = updates.description;
-  if (updates.style_dna) allowedFields.style_dna = updates.style_dna;
+  if (updates.style_dna) {
+    const currentType = (current?.style_dna as Record<string, unknown>)?.category_type;
+    allowedFields.style_dna = { ...updates.style_dna, category_type: currentType };
+  }
   allowedFields.updated_at = new Date().toISOString();
 
   const { error } = await supabaseAdmin

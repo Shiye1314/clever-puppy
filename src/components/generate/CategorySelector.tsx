@@ -11,19 +11,20 @@ interface Category {
 interface Props {
   value: string;
   onChange: (categoryId: string) => void;
+  mode?: "brand" | "niche";
 }
 
-export default function CategorySelector({ value, onChange }: Props) {
+export default function CategorySelector({ value, onChange, mode = "niche" }: Props) {
   const [categories, setCategories] = useState<Category[]>([]);
 
   useEffect(() => {
-    fetch("/api/categories")
+    fetch(`/api/categories?type=${mode}`)
       .then((r) => r.json())
       .then((data) => {
         if (Array.isArray(data)) setCategories(data);
       })
       .catch(() => {});
-  }, []);
+  }, [mode]);
 
   return (
     <div className="space-y-0">
@@ -40,7 +41,9 @@ export default function CategorySelector({ value, onChange }: Props) {
           paddingRight: "18px",
         }}
       >
-        <option value="">通用（全局风格）</option>
+        <option value="">
+          {mode === "brand" ? "通用（不指定品牌）" : "通用（全局风格）"}
+        </option>
         {categories.map((cat) => (
           <option key={cat.id} value={cat.id}>
             {cat.name}（{cat.writing_samples_count} 篇范文）

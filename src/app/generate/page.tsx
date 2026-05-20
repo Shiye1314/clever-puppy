@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import UploadZone from "@/components/generate/UploadZone";
-import ProductCardForm from "@/components/generate/ProductCardForm";
 import ArticleResult from "@/components/generate/ArticleResult";
 import CategorySelector from "@/components/generate/CategorySelector";
 import AgentStatus from "@/components/generate/AgentStatus";
@@ -25,7 +24,7 @@ const emptySections: ArticleSectionsV2 = {
 export default function GeneratePage() {
   const [rawContent, setRawContent] = useState("");
   const [fileName, setFileName] = useState("");
-  const [card, setCard] = useState<ProductCard>(emptyCard);
+  const [card, setCard] = useState<ProductCard | null>(null);
   const [sections, setSections] = useState<ArticleSectionsV2>(emptySections);
   const [extracting, setExtracting] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -39,12 +38,16 @@ export default function GeneratePage() {
     research: Record<string, unknown>;
     integration: Record<string, unknown>;
   } | null>(null);
+  const [prepared, setPrepared] = useState(false);
 
   const handleTextReady = (text: string, name?: string) => {
     setRawContent(text);
     if (name) setFileName(name);
+    setPrepared(false);
+    setCard(null);
   };
 
+  // 阶段1：信息整理（提取→研究→整合）
   const handleExtract = async () => {
     if (!rawContent) return;
     setExtracting(true);
@@ -57,37 +60,43 @@ export default function GeneratePage() {
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
-      setCard({
-        productName: data.productName || "",
-        sellingPoints: data.sellingPoints || [],
-        targetPainPoint: data.targetPainPoint || "",
-        usageScenario: data.usageScenario || "",
-        competitorDiff: data.competitorDiff || "",
-      });
+
+      setCard(data.card);
+      if (data.agents) setAgentStatus(data.agents);
+      setPrepared(true);
     } catch (err) {
-      alert("提取失败: " + (err as Error).message);
+      alert("整理失败: " + (err as Error).message);
     }
     setExtracting(false);
   };
 
+  // 阶段2：风格融合生成（自动检测是否已完成整理信息）
   const handleGenerate = async () => {
     setGenerating(true);
-    setAgentStatus(null);
+    const hasCard = card && card.productName;
     try {
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: rawContent, productCardOverride: card, categoryId: selectedCategory || undefined, rewriteRequirement: rewriteRequirement || undefined }),
+        body: JSON.stringify({
+          // 已整理：传 productCard（快速路径，跳过前三步）
+          // 未整理：传 content（完整路径，当场跑四步骤）
+          ...(hasCard
+            ? { productCard: card }
+            : { content: rawContent }
+          ),
+          categoryId: selectedCategory || undefined,
+          rewriteRequirement: rewriteRequirement || undefined,
+        }),
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
-      if (data.agents) {
-        setAgentStatus(data.agents);
-      } else {
-        setAgentStatus(null);
-      }
       setSections(data.sections);
-      setCard(data.card);
+      if (!hasCard && data.card) {
+        setCard(data.card);
+        setPrepared(true);
+      }
+      if (data.agents) setAgentStatus(data.agents);
 
       // 自动保存历史
       const saveRes = await fetch("/api/tasks", {
@@ -136,7 +145,6 @@ export default function GeneratePage() {
       const updated = await res.json();
       setSections(updated);
 
-      // 更新历史
       if (currentTaskId) {
         await fetch(`/api/tasks?id=${currentTaskId}`, {
           method: "PUT",
@@ -155,7 +163,6 @@ export default function GeneratePage() {
 
   const handleSave = async () => {
     if (currentTaskId) {
-      // 已存在记录 → 更新
       const res = await fetch(`/api/tasks?id=${currentTaskId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -179,7 +186,7 @@ export default function GeneratePage() {
       body: JSON.stringify({
         task_type: "generate",
         module: "generate",
-        title: card.productName || fileName || "素材生成",
+        title: card?.productName || fileName || "素材生成",
         input_data: { rawContent, fileName, productCard: card, rewriteRequirement },
         product_card: card,
         output_data: sections,
@@ -193,10 +200,13 @@ export default function GeneratePage() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-64px)]">
+    <div className="flex gap-3 h-[calc(100vh-64px)]">
       {/* 操作区 40% */}
-      <div className="w-[40%] min-w-[220px] border-r border-border overflow-y-auto scrollbar-hide p-5 space-y-5">
-        {/* Step 1 */}
+      <div className="w-[40%] min-w-[220px] relative overflow-y-auto scrollbar-hide p-5 space-y-5">
+        {/* 居中分割线 */}
+        <div className="absolute top-0 bottom-0 -right-1.5 w-px bg-border" />
+
+        {/* Step 1: 上传 + 整理信息 */}
         <section>
           <div className="flex items-center gap-1 mb-2">
             <span className="w-0.5 h-2 rounded-full bg-amber flex-shrink-0" />
@@ -209,27 +219,24 @@ export default function GeneratePage() {
               disabled={!rawContent || extracting}
               className="text-[16px] text-amber hover:text-amber/80 transition-colors disabled:opacity-30 font-medium"
             >
-              {extracting ? "提炼中..." : "整理信息 →"}
+              {extracting ? "分析中..." : "整理信息 →"}
             </button>
+            {prepared && card && (
+              <div className="flex items-center gap-2 text-[13px] text-green-600 bg-green-50 rounded-lg px-3 py-1.5">
+                <span>✅</span>
+                <span>信息已整理就绪 — {card.productName}</span>
+                {card.sellingPoints.length > 0 && (
+                  <span className="text-muted/50 truncate">
+                    · {card.sellingPoints.join("、")}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         </section>
 
-        {/* 产品信息卡 */}
+        {/* 洗稿要求 + 写作风格 + 生成 */}
         <section>
-          <div className="flex items-center gap-1 mb-2">
-            <span className="w-0.5 h-2 rounded-full bg-amber flex-shrink-0" />
-            <span className="text-[16px] font-medium text-ink">产品信息卡</span>
-          </div>
-          <div className="rounded-xl bg-surface border border-border p-3">
-            <ProductCardForm card={card} onChange={setCard} loading={extracting} />
-          </div>
-        </section>
-      </div>
-
-      {/* 结果区 60% */}
-      <div className="w-[60%] overflow-y-auto scrollbar-hide p-5">
-        {/* 洗稿要求 */}
-        <section className="mb-5">
           <div className="flex items-center gap-1 mb-2">
             <span className="w-0.5 h-2 rounded-full bg-amber flex-shrink-0" />
             <span className="text-[16px] font-medium text-ink">洗稿要求</span>
@@ -238,8 +245,8 @@ export default function GeneratePage() {
             <textarea
               value={rewriteRequirement}
               onChange={(e) => setRewriteRequirement(e.target.value)}
-              placeholder="输入你的新想法、新需求、新要求，AI 会根据这些额外要求进行爆文撰写。例如：强调性价比、突出限时优惠、加入品牌故事..."
-              className="w-full min-h-[120px] rounded-lg border border-border bg-paper px-2 py-1.5 text-[14px] text-ink
+              placeholder="输入你的新想法、新需求、新要求..."
+              className="w-full min-h-[80px] rounded-lg border border-border bg-paper px-2 py-1.5 text-[14px] text-ink
                          placeholder:text-muted/40 resize-y
                          focus:outline-none focus:border-amber/50 focus:ring-1 focus:ring-amber/20
                          transition-colors duration-200"
@@ -247,14 +254,10 @@ export default function GeneratePage() {
 
             {/* 写作风格 */}
             <div className="flex items-center justify-between pt-1">
-              <div className="flex items-center gap-1">
-                <span className="w-0.5 h-2 rounded-full bg-amber flex-shrink-0" />
-                <span className="text-[14px] font-medium text-muted/70">写作风格</span>
-              </div>
-              {/* 模式切换 */}
+              <span className="text-[14px] font-medium text-muted/70">写作风格</span>
               <div className="flex rounded-lg border border-border bg-paper p-0.5">
                 <button
-                  onClick={() => setCategoryMode("brand")}
+                  onClick={() => { setCategoryMode("brand"); setSelectedCategory(""); }}
                   className={`px-2.5 py-1 text-[13px] font-medium rounded-md transition-all ${
                     categoryMode === "brand"
                       ? "bg-amber text-white shadow-sm"
@@ -264,7 +267,7 @@ export default function GeneratePage() {
                   品牌专类
                 </button>
                 <button
-                  onClick={() => setCategoryMode("niche")}
+                  onClick={() => { setCategoryMode("niche"); setSelectedCategory(""); }}
                   className={`px-2.5 py-1 text-[13px] font-medium rounded-md transition-all ${
                     categoryMode === "niche"
                       ? "bg-amber text-white shadow-sm"
@@ -275,7 +278,7 @@ export default function GeneratePage() {
                 </button>
               </div>
             </div>
-            <CategorySelector value={selectedCategory} onChange={setSelectedCategory} />
+            <CategorySelector value={selectedCategory} onChange={setSelectedCategory} mode={categoryMode} />
 
             <div className="pt-1">
               <EmpowerButton onClick={handleGenerate} loading={generating} />
@@ -283,12 +286,26 @@ export default function GeneratePage() {
           </div>
         </section>
 
+        {/* Agent 进度 */}
+        {agentStatus && (
+          <section>
+            <div className="flex items-center gap-1 mb-2">
+              <span className="w-0.5 h-2 rounded-full bg-amber flex-shrink-0" />
+              <span className="text-[16px] font-medium text-ink">分析详情</span>
+            </div>
+            <div className="rounded-xl bg-surface border border-border p-3">
+              <AgentStatus agents={agentStatus} generating={false} />
+            </div>
+          </section>
+        )}
+      </div>
+
+      {/* 结果区 60% */}
+      <div className="w-[60%] overflow-y-auto scrollbar-hide p-5">
         <div className="flex items-center gap-1 mb-3">
           <span className="w-0.5 h-2 rounded-full bg-amber flex-shrink-0" />
           <span className="text-[16px] font-medium text-ink">爆文输出</span>
         </div>
-
-        <AgentStatus agents={agentStatus} generating={generating} />
 
         {sections.painPoint || sections.transition || sections.productIntro ? (
           <>
@@ -308,7 +325,7 @@ export default function GeneratePage() {
         ) : (
           <div className="rounded-xl bg-surface border border-border p-8 text-center mt-2">
             <p className="text-[14px] text-muted/40 leading-relaxed">
-              点击"生成"后此处显示生成结果
+              {rawContent ? `点击「生成」后此处显示生成结果` : `← 先在左侧上传资料`}
             </p>
           </div>
         )}

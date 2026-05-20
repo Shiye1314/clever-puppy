@@ -6,6 +6,7 @@ import GradientText from "@/components/ui/GradientText";
 
 const links = [
   { label: "素材生成", href: "/generate" },
+  { label: "品牌洗稿", href: "/rewrite" },
   { label: "风格DNA", href: "/style" },
   { label: "设置", href: "/settings" },
 ];

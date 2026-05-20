@@ -84,22 +84,86 @@ export function extractJSON(text: string): Record<string, unknown> {
     arrCount--;
   }
 
-  // 4. 尝试解析，失败则逐层修复常见 JSON 错误
+  // 4. 修复未闭合字符串（LLM 在字符串值中间被截断）
+  jsonStr = fixUnterminatedStrings(jsonStr);
+
+  // 5. 尝试解析，失败则逐层修复常见 JSON 错误
   try {
     return JSON.parse(jsonStr);
-  } catch {
+  } catch (firstErr) {
     // 修复A：移除尾逗号
     jsonStr = jsonStr.replace(/,\s*([}\]])/g, "$1");
-    // 修复B：单引号转双引号
-    jsonStr = jsonStr.replace(/'/g, "\"");
-    // 修复C：字符串值内未转义的换行 → 移除（换行为 whitespace，合并行保留语义）
-    jsonStr = jsonStr.replace(/\n/g, "");
-    // 修复D：多余回车符
+    // 修复B：字符串值内未转义的换行 → 用空格替换
+    jsonStr = jsonStr.replace(/\n/g, " ");
+    // 修复C：多余回车符
     jsonStr = jsonStr.replace(/\r/g, "");
+    // 再试一次未闭合字符串修复（换行替换后可能暴露新问题）
+    jsonStr = fixUnterminatedStrings(jsonStr);
     try {
       return JSON.parse(jsonStr);
-    } catch (e) {
-      throw new Error(`无法提取 JSON：${(e as Error).message}`);
+    } catch (secondErr) {
+      // 最终手段：用正则逐个提取字段值，构建新对象
+      const recovered = recoverJSONByFieldExtraction(jsonStr);
+      if (recovered) return recovered;
+      throw new Error(`无法提取 JSON：${(secondErr as Error).message}`);
     }
   }
+}
+
+// 修复未闭合的字符串：在最后一个未闭合的引号后补上闭合引号
+function fixUnterminatedStrings(jsonStr: string): string {
+  let result = "";
+  let inString = false;
+  let escapeNext = false;
+
+  for (let i = 0; i < jsonStr.length; i++) {
+    const ch = jsonStr[i];
+    result += ch;
+
+    if (escapeNext) {
+      escapeNext = false;
+      continue;
+    }
+
+    if (ch === "\\") {
+      escapeNext = true;
+      continue;
+    }
+
+    if (ch === '"') {
+      inString = !inString;
+    }
+  }
+
+  if (inString) result += '"';
+  return result;
+}
+
+// 最终兜底：按字段逐个提取，不依赖完整 JSON 解析
+function recoverJSONByFieldExtraction(jsonStr: string): Record<string, unknown> | null {
+  try {
+    const result: Record<string, unknown> = {};
+    // 匹配 "key": "value" 或 "key": [...] 或 "key": {...} 模式
+    const fieldRegex = /"(\w+)":\s*("(?:[^"\\]|\\.)*"|\[.*?\]|\{[^}]*\})/g;
+    let match;
+    while ((match = fieldRegex.exec(jsonStr)) !== null) {
+      const key = match[1];
+      let value = match[2];
+      try {
+        // 是 JSON 结构值（数组/对象）
+        result[key] = JSON.parse(value);
+      } catch {
+        // 是字符串，去掉首尾引号
+        if (value.startsWith('"') && value.endsWith('"')) {
+          result[key] = value.slice(1, -1).replace(/\\"/g, '"');
+        } else {
+          result[key] = value;
+        }
+      }
+    }
+    if (Object.keys(result).length > 0) return result;
+  } catch {
+    // 兜底也失败
+  }
+  return null;
 }

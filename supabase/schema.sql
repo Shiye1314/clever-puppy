@@ -113,3 +113,7 @@ ALTER TABLE writing_samples ADD COLUMN IF NOT EXISTS category_id UUID REFERENCES
 
 -- 给任务添加分类关联
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS category_id UUID REFERENCES categories(id) ON DELETE SET NULL;
+
+-- 区分品牌大类 vs 细分大类
+ALTER TABLE categories ADD COLUMN IF NOT EXISTS category_type TEXT NOT NULL DEFAULT 'niche' CHECK (category_type IN ('brand', 'niche'));
+CREATE INDEX IF NOT EXISTS idx_categories_type ON categories(category_type);

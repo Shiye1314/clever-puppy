@@ -61,8 +61,12 @@ export async function runGeneratePipeline(
 
   // 并行启动两个Agent
   const [extractedCard, marketResearch] = await Promise.all([
-    extractProductCard(rawContent, extractionModel, apiKey, provider),
-    runMarketResearch(analysisText, apiKey, generationModel, provider),
+    extractProductCard(rawContent, extractionModel, apiKey, provider).catch((e) => {
+      throw new Error(`[信息提取Agent] ${(e as Error).message}`);
+    }),
+    runMarketResearch(analysisText, apiKey, generationModel, provider).catch((e) => {
+      throw new Error(`[市场研究Agent] ${(e as Error).message}`);
+    }),
   ]);
 
   // 构建产品信息卡
@@ -77,7 +81,9 @@ export async function runGeneratePipeline(
   };
 
   // 4. 信息整合
-  const integratedCard = await integrateBrief(rawCard, marketResearch, apiKey, extractionModel, provider);
+  const integratedCard = await integrateBrief(rawCard, marketResearch, apiKey, extractionModel, provider).catch((e) => {
+    throw new Error(`[信息整合Agent] ${(e as Error).message}`);
+  });
 
   const card: ProductCard = {
     productName: integratedCard.productName || rawCard.productName,

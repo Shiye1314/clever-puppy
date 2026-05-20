@@ -8,6 +8,6 @@ export async function extractProductCard(
   provider: string = "anthropic"
 ): Promise<Record<string, unknown>> {
   const prompt = EXTRACT_PROMPT.replace("{content}", content);
-  const text = await callLLM({ prompt, model: extractionModel, maxTokens: 1024, provider: provider as any, apiKey });
+  const text = await callLLM({ prompt, model: extractionModel, maxTokens: 2048, provider: provider as any, apiKey });
   return extractJSON(text);
 }

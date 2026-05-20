@@ -18,13 +18,17 @@ const defaultDna: StyleDNA = {
 export default function StylePage() {
   const [dna, setDna] = useState<StyleDNA>(defaultDna);
   const [samples, setSamples] = useState("");
-  const [analyzing, setAnalyzing] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [categories, setCategories] = useState<Array<{id: string; name: string; writing_samples_count: number; updated_at: string}>>([]);
+  const [brandCategories, setBrandCategories] = useState<Array<{id: string; name: string; writing_samples_count: number; updated_at: string}>>([]);
+  const [nicheCategories, setNicheCategories] = useState<Array<{id: string; name: string; writing_samples_count: number; updated_at: string}>>([]);
   const [batchLearning, setBatchLearning] = useState(false);
-  const categoryScrollRef = useRef<HTMLDivElement>(null);
+  const [learnMode, setLearnMode] = useState<"brand" | "niche">("niche");
+  const [selectedType, setSelectedType] = useState<"brand" | "niche">("niche");
+  const nicheScrollRef = useRef<HTMLDivElement>(null);
   const [batchResult, setBatchResult] = useState<{
-    totalArticles: number; classified: number; categoriesFound: number;
+    mode?: string; brandName?: string; isNewBrand?: boolean;
+    totalArticles: number; totalAccumulated?: number;
+    classified?: number; categoriesFound?: number;
     dnaUpdated: number; categories: Array<{ categoryId: string; categoryName: string; articleCount: number }>;
   } | null>(null);
 
@@ -34,11 +38,16 @@ export default function StylePage() {
     }).catch(() => {});
   }, []);
 
-  useEffect(() => {
-    fetch("/api/categories").then((r) => r.json()).then((data) => {
-      if (Array.isArray(data)) setCategories(data);
+  const refreshCategories = () => {
+    fetch("/api/categories?type=brand").then((r) => r.json()).then((data) => {
+      if (Array.isArray(data)) setBrandCategories(data);
     }).catch(() => {});
-  }, []);
+    fetch("/api/categories?type=niche").then((r) => r.json()).then((data) => {
+      if (Array.isArray(data)) setNicheCategories(data);
+    }).catch(() => {});
+  };
+
+  useEffect(() => { refreshCategories(); }, []);
 
   const handleBatchLearn = async () => {
     if (!samples.trim()) return;
@@ -47,14 +56,14 @@ export default function StylePage() {
     try {
       const res = await fetch("/api/learn/batch", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: samples }),
+        body: JSON.stringify({ content: samples, category_type: learnMode }),
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       setBatchResult(data);
-      fetch("/api/categories").then((r) => r.json()).then((d) => {
-        if (Array.isArray(d)) setCategories(d);
-      }).catch(() => {});
+      refreshCategories();
+      // 品牌模式：学习成功后自动切换右侧面板到对应类型
+      if (data.mode === "brand") setSelectedType("brand");
     } catch (err) {
       alert("批量学习失败: " + (err as Error).message);
     }
@@ -73,7 +82,9 @@ export default function StylePage() {
     const res = await fetch(`/api/categories/${id}`);
     const data = await res.json();
     if (data.style_dna) {
-      setDna({ ...defaultDna, ...data.style_dna } as StyleDNA);
+      // 过滤掉内部字段（category_type 等），只保留风格维度
+      const { category_type: _, ...cleanDna } = data.style_dna as Record<string, unknown>;
+      setDna({ ...defaultDna, ...cleanDna } as StyleDNA);
       alert(`已加载「${data.name}」的风格DNA到编辑区`);
     }
   };
@@ -84,14 +95,43 @@ export default function StylePage() {
       <div className="flex-1 overflow-y-auto scrollbar-hide py-7 pr-8">
         {/* 导入范文 */}
         <section className="mb-8">
-          <div className="flex items-center gap-1.5 mb-3">
-            <span className="w-0.5 h-2 rounded-full bg-amber flex-shrink-0" />
-            <h2 className="text-[16px] font-medium text-ink">导入范文</h2>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-1.5">
+              <span className="w-0.5 h-2 rounded-full bg-amber flex-shrink-0" />
+              <h2 className="text-[16px] font-medium text-ink">导入范文</h2>
+            </div>
+            {/* 模式切换 */}
+            <div className="flex rounded-lg border border-border bg-paper p-0.5">
+              <button
+                onClick={() => setLearnMode("brand")}
+                className={`px-2.5 py-1 text-[13px] font-medium rounded-md transition-all ${
+                  learnMode === "brand"
+                    ? "bg-amber text-white shadow-sm"
+                    : "text-muted hover:text-ink"
+                }`}
+              >
+                品牌专类
+              </button>
+              <button
+                onClick={() => setLearnMode("niche")}
+                className={`px-2.5 py-1 text-[13px] font-medium rounded-md transition-all ${
+                  learnMode === "niche"
+                    ? "bg-amber text-white shadow-sm"
+                    : "text-muted hover:text-ink"
+                }`}
+              >
+                细分大类
+              </button>
+            </div>
           </div>
           <textarea
             value={samples}
             onChange={(e) => setSamples(e.target.value)}
-            placeholder="粘贴爆文代表作，每篇用 --- 分隔"
+            placeholder={
+              learnMode === "brand"
+                ? "粘贴同一品牌的多篇爆文，每篇用 --- 分隔。Agent 将自动识别品牌名并学习其写作风格"
+                : "粘贴爆文代表作，每篇用 --- 分隔。Agent 将自动分类并学习各品类的写作风格"
+            }
             className="w-full h-[176px] rounded-lg border border-border bg-surface p-2 text-[14px] leading-relaxed resize-y placeholder:text-muted/40 focus:outline-none focus:border-amber/50 transition-colors"
           />
           <div className="flex items-center gap-2 mt-2">
@@ -100,11 +140,14 @@ export default function StylePage() {
               disabled={batchLearning || !samples.trim()}
               className="text-[16px] text-amber font-medium hover:text-amber/80 transition-colors disabled:opacity-30"
             >
-              {batchLearning ? "学习中..." : "批量学习 · 自动分类"}
+              {batchLearning ? "学习中..." : learnMode === "brand" ? "批量学习 · 品牌识别" : "批量学习 · 自动分类"}
             </button>
             {batchResult && (
               <span className="text-[14px] text-muted/50">
-                {batchResult.totalArticles} 篇 → {batchResult.categoriesFound} 品类 · {batchResult.dnaUpdated} DNA 更新
+                {batchResult.mode === "brand"
+                  ? `品牌「${batchResult.brandName}」${batchResult.isNewBrand ? "新建" : "已有"} · ${batchResult.totalAccumulated ?? batchResult.totalArticles} 篇范文 · DNA 已更新`
+                  : `${batchResult.totalArticles} 篇 → ${batchResult.categoriesFound} 品类 · ${batchResult.dnaUpdated} DNA 更新`
+                }
               </span>
             )}
           </div>
@@ -210,45 +253,102 @@ export default function StylePage() {
           <span className="w-0.5 h-2 rounded-full bg-amber flex-shrink-0" />
           <h2 className="text-[16px] font-medium text-ink">大类管理</h2>
         </div>
-        <p className="text-[14px] text-muted/40 leading-relaxed mb-4">
+        <p className="text-[14px] text-muted/40 leading-relaxed mb-3">
           每个品类独立学习写作风格，投喂越多，模仿越精准
         </p>
 
+        {/* 类型切换 Tab */}
+        <div className="flex rounded-lg border border-border bg-paper p-0.5 mb-3">
+          <button
+            onClick={() => setSelectedType("niche")}
+            className={`flex-1 px-2 py-1 text-[12px] font-medium rounded-md transition-all ${
+              selectedType === "niche"
+                ? "bg-amber text-white shadow-sm"
+                : "text-muted hover:text-ink"
+            }`}
+          >
+            细分大类
+          </button>
+          <button
+            onClick={() => setSelectedType("brand")}
+            className={`flex-1 px-2 py-1 text-[12px] font-medium rounded-md transition-all ${
+              selectedType === "brand"
+                ? "bg-amber text-white shadow-sm"
+                : "text-muted hover:text-ink"
+            }`}
+          >
+            品牌大类
+          </button>
+        </div>
+
         <div
-          ref={categoryScrollRef}
-          className="max-h-[calc(100vh-280px)] overflow-y-auto scrollbar-hide"
+          ref={nicheScrollRef}
+          className="max-h-[calc(100vh-340px)] overflow-y-auto scrollbar-hide"
         >
-          <div className="space-y-1.5">
-            {categories.map((cat, i) => (
-              <AnimatedItem key={cat.id} delay={i * 0.04}>
-                <div
-                  onClick={() => handleViewCategory(cat.id)}
-                  className="group rounded-lg border border-border bg-surface p-3 cursor-pointer transition-all duration-200 hover:border-amber hover:shadow-sm"
-                >
-                  <div className="flex items-end justify-between">
-                    <span className="text-[19px] font-semibold text-ink group-hover:text-amber transition-colors">
-                      {cat.name}
-                    </span>
-                    <span className="text-[45px] leading-none font-bold text-muted/8 tabular-nums group-hover:text-amber/10 transition-colors">
-                      {cat.writing_samples_count}
-                    </span>
+          {selectedType === "niche" ? (
+            <div className="space-y-1.5">
+              {nicheCategories.map((cat, i) => (
+                <AnimatedItem key={cat.id} delay={i * 0.04}>
+                  <div
+                    onClick={() => handleViewCategory(cat.id)}
+                    className="group rounded-lg border border-border bg-surface p-3 cursor-pointer transition-all duration-200 hover:border-amber hover:shadow-sm"
+                  >
+                    <div className="flex items-end justify-between">
+                      <span className="text-[19px] font-semibold text-ink group-hover:text-amber transition-colors">
+                        {cat.name}
+                      </span>
+                      <span className="text-[45px] leading-none font-bold text-muted/8 tabular-nums group-hover:text-amber/10 transition-colors">
+                        {cat.writing_samples_count}
+                      </span>
+                    </div>
+                    <p className="text-[14px] text-muted/40 mt-1">
+                      {new Date(cat.updated_at).toLocaleDateString("zh-CN")}
+                    </p>
                   </div>
-                  <p className="text-[14px] text-muted/40 mt-1">
-                    {new Date(cat.updated_at).toLocaleDateString("zh-CN")}
-                  </p>
+                </AnimatedItem>
+              ))}
+              {nicheCategories.length === 0 && (
+                <div className="py-8 text-center">
+                  <p className="text-[16px] text-muted/30">暂无细分大类</p>
+                  <p className="text-[14px] text-muted/20 mt-0.5">导入范文后自动分类</p>
                 </div>
-              </AnimatedItem>
-            ))}
-          </div>
-          {categories.length === 0 && (
-            <div className="py-8 text-center">
-              <p className="text-[16px] text-muted/30">暂无品类</p>
-              <p className="text-[14px] text-muted/20 mt-0.5">导入范文后自动分类</p>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              {brandCategories.map((cat, i) => (
+                <AnimatedItem key={cat.id} delay={i * 0.04}>
+                  <div
+                    onClick={() => handleViewCategory(cat.id)}
+                    className="group rounded-lg border border-border bg-surface p-3 cursor-pointer transition-all duration-200 hover:border-amber hover:shadow-sm"
+                  >
+                    <div className="flex items-end justify-between">
+                      <span className="text-[19px] font-semibold text-ink group-hover:text-amber transition-colors">
+                        {cat.name}
+                      </span>
+                      <span className="text-[45px] leading-none font-bold text-muted/8 tabular-nums group-hover:text-amber/10 transition-colors">
+                        {cat.writing_samples_count}
+                      </span>
+                    </div>
+                    <p className="text-[14px] text-muted/40 mt-1">
+                      {new Date(cat.updated_at).toLocaleDateString("zh-CN")}
+                    </p>
+                  </div>
+                </AnimatedItem>
+              ))}
+              {brandCategories.length === 0 && (
+                <div className="py-8 text-center">
+                  <p className="text-[16px] text-muted/30">暂无品牌大类</p>
+                  <p className="text-[14px] text-muted/20 mt-0.5">在左侧创建品牌大类</p>
+                </div>
+              )}
             </div>
           )}
         </div>
 
-        <ScrollGradient scrollRef={categoryScrollRef} color="#FAFBFC" />
+        {selectedType === "niche" && nicheCategories.length > 0 && (
+          <ScrollGradient scrollRef={nicheScrollRef} color="#FAFBFC" />
+        )}
       </div>
     </div>
   );

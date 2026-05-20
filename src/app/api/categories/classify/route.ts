@@ -64,10 +64,14 @@ export async function POST(request: Request) {
       });
     }
 
-    // 自动创建新大类
+    // 自动创建新大类（标记为细分大类）
     const { data: newCategory, error: createError } = await supabaseAdmin
       .from("categories")
-      .insert({ name: result.categoryName, description: `自动识别：${result.categoryName}` })
+      .insert({
+        name: result.categoryName,
+        description: `自动识别：${result.categoryName}`,
+        style_dna: { category_type: "niche" },
+      })
       .select()
       .single();
 
