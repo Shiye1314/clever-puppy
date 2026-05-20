@@ -12,8 +12,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     <>
       <TopNav />
       <HistorySidebar onSelectTask={setPendingRestore} />
-      <main className="pt-[64px] pl-[120px] pr-[120px] min-h-screen">
-        {children}
+      <main className="pt-[64px] pl-[36px] min-h-screen">
+        <div className="mx-auto max-w-[1200px] min-h-[calc(100vh-64px)] pr-6">
+          {children}
+        </div>
       </main>
     </>
   );

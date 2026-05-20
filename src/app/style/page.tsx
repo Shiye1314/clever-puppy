@@ -79,7 +79,7 @@ export default function StylePage() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-64px)]">
+    <div className="flex h-[calc(100vh-64px)] pl-[19px]">
       {/* 左侧 — 导入 + 档案 */}
       <div className="flex-1 overflow-y-auto scrollbar-hide py-7 pr-8">
         {/* 导入范文 */}
@@ -123,7 +123,7 @@ export default function StylePage() {
               <input
                 type="text" value={dna.tone}
                 onChange={(e) => setDna({ ...dna, tone: e.target.value })}
-                className="w-full h-5 rounded-lg border border-border bg-surface px-2 text-[14px] text-ink placeholder:text-muted/40 focus:outline-none focus:border-amber/50 transition-colors"
+                className="w-full h-10 rounded-lg border border-border bg-surface px-2 text-[14px] text-ink placeholder:text-muted/40 focus:outline-none focus:border-amber/50 transition-colors"
                 placeholder="如：闺蜜聊天 + 10% 专业背书"
               />
             </div>
@@ -135,7 +135,7 @@ export default function StylePage() {
                   type="text"
                   value={dna.keywords_high_freq.join(", ")}
                   onChange={(e) => setDna({ ...dna, keywords_high_freq: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
-                  className="w-full h-5 rounded-lg border border-border bg-surface px-2 text-[14px] text-ink placeholder:text-muted/40 focus:outline-none focus:border-amber/50 transition-colors"
+                  className="w-full h-10 rounded-lg border border-border bg-surface px-2 text-[14px] text-ink placeholder:text-muted/40 focus:outline-none focus:border-amber/50 transition-colors"
                   placeholder="逗号分隔"
                 />
               </div>
@@ -145,7 +145,7 @@ export default function StylePage() {
                   type="text"
                   value={dna.emoji_usage.preferred.join(", ")}
                   onChange={(e) => setDna({ ...dna, emoji_usage: { ...dna.emoji_usage, preferred: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) } })}
-                  className="w-full h-5 rounded-lg border border-border bg-surface px-2 text-[14px] text-ink placeholder:text-muted/40 focus:outline-none focus:border-amber/50 transition-colors"
+                  className="w-full h-10 rounded-lg border border-border bg-surface px-2 text-[14px] text-ink placeholder:text-muted/40 focus:outline-none focus:border-amber/50 transition-colors"
                   placeholder="✨ 💡 ✅ 🔥"
                 />
               </div>
@@ -182,7 +182,7 @@ export default function StylePage() {
                 <select
                   value={dna.paragraph_rhythm.exclamation_density}
                   onChange={(e) => setDna({ ...dna, paragraph_rhythm: { ...dna.paragraph_rhythm, exclamation_density: e.target.value } })}
-                  className="w-full h-5 rounded-lg border border-border bg-surface px-2 text-[14px] text-ink focus:outline-none focus:border-amber/50 transition-colors appearance-none"
+                  className="w-full h-10 rounded-lg border border-border bg-surface px-2 text-[14px] text-ink focus:outline-none focus:border-amber/50 transition-colors appearance-none"
                 >
                   <option value="low">低</option>
                   <option value="medium">中</option>

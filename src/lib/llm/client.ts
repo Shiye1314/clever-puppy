@@ -51,7 +51,55 @@ export async function callLLM(params: LLMCallParams): Promise<string> {
 }
 
 export function extractJSON(text: string): Record<string, unknown> {
-  const match = text.match(/\{[\s\S]*\}/);
-  if (!match) throw new Error("无法提取 JSON");
-  return JSON.parse(match[0]);
+  // 1. 先尝试从 markdown 代码块中提取
+  const codeBlock = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  const candidate = codeBlock?.[1]?.trim() ?? text;
+
+  // 2. 查找最外层花括号
+  const firstBrace = candidate.indexOf("{");
+  const lastBrace = candidate.lastIndexOf("}");
+  if (firstBrace === -1) {
+    throw new Error("无法提取 JSON：LLM 返回内容不含花括号");
+  }
+  let jsonStr = candidate.slice(firstBrace, lastBrace >= firstBrace ? lastBrace + 1 : undefined);
+
+  // 3. 修复未闭合括号（LLM 输出被截断）：统计并补全
+  let openCount = 0;
+  for (const ch of jsonStr) {
+    if (ch === "{") openCount++;
+    else if (ch === "}") openCount--;
+  }
+  while (openCount > 0) {
+    jsonStr += "}";
+    openCount--;
+  }
+  // 同理补全数组括号（如果有的话）
+  let arrCount = 0;
+  for (const ch of jsonStr) {
+    if (ch === "[") arrCount++;
+    else if (ch === "]") arrCount--;
+  }
+  while (arrCount > 0) {
+    jsonStr += "]";
+    arrCount--;
+  }
+
+  // 4. 尝试解析，失败则逐层修复常见 JSON 错误
+  try {
+    return JSON.parse(jsonStr);
+  } catch {
+    // 修复A：移除尾逗号
+    jsonStr = jsonStr.replace(/,\s*([}\]])/g, "$1");
+    // 修复B：单引号转双引号
+    jsonStr = jsonStr.replace(/'/g, "\"");
+    // 修复C：字符串值内未转义的换行 → 移除（换行为 whitespace，合并行保留语义）
+    jsonStr = jsonStr.replace(/\n/g, "");
+    // 修复D：多余回车符
+    jsonStr = jsonStr.replace(/\r/g, "");
+    try {
+      return JSON.parse(jsonStr);
+    } catch (e) {
+      throw new Error(`无法提取 JSON：${(e as Error).message}`);
+    }
+  }
 }

@@ -1,11 +1,20 @@
 "use client";
 
+import { useRef, useEffect } from "react";
+
 interface Props {
   points: string[];
   onChange: (points: string[]) => void;
 }
 
 export default function SellingPointInput({ points, onChange }: Props) {
+  const composingRef = useRef(false);
+  const newInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    newInputRef.current?.focus();
+  }, [points.length]);
+
   const handleChange = (index: number, value: string) => {
     const updated = [...points];
     if (index < updated.length) {
@@ -46,11 +55,20 @@ export default function SellingPointInput({ points, onChange }: Props) {
           )}
         </div>
       ))}
-      {/* 新增空白输入 */}
+      {/* 新增空白输入 — 非受控模式，key 强制重建避免残留文字 */}
       <input
+        ref={newInputRef}
+        key={points.length}
         type="text"
-        value=""
+        defaultValue=""
+        onCompositionStart={() => { composingRef.current = true; }}
+        onCompositionEnd={(e) => {
+          composingRef.current = false;
+          const val = e.currentTarget.value;
+          if (val) handleChange(points.length, val);
+        }}
         onChange={(e) => {
+          if (composingRef.current) return;
           if (e.target.value) handleChange(points.length, e.target.value);
         }}
         placeholder={`核心卖点 ${points.length + 1}`}

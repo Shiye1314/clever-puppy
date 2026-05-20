@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef, useCallback, useEffect } from "react";
 import SellingPointInput from "./SellingPointInput";
 import type { ProductCard } from "@/lib/types";
 
@@ -13,6 +14,26 @@ export default function ProductCardForm({ card, onChange, loading }: Props) {
   const update = (field: keyof ProductCard, value: unknown) => {
     onChange({ ...card, [field]: value });
   };
+
+  const painRef = useRef<HTMLTextAreaElement>(null);
+  const scenarioRef = useRef<HTMLTextAreaElement>(null);
+  const diffRef = useRef<HTMLTextAreaElement>(null);
+
+  const autoResize = useCallback((el: HTMLTextAreaElement) => {
+    el.style.height = "auto";
+    el.style.height = el.scrollHeight + "px";
+  }, []);
+
+  // 当值（尤其提取API返回后）自动调整高度
+  useEffect(() => {
+    if (painRef.current) autoResize(painRef.current);
+  }, [card.targetPainPoint, autoResize]);
+  useEffect(() => {
+    if (scenarioRef.current) autoResize(scenarioRef.current);
+  }, [card.usageScenario, autoResize]);
+  useEffect(() => {
+    if (diffRef.current) autoResize(diffRef.current);
+  }, [card.competitorDiff, autoResize]);
 
   return (
     <div className="space-y-2.5">
@@ -46,13 +67,15 @@ export default function ProductCardForm({ card, onChange, loading }: Props) {
         <span className="text-[14px] font-medium text-muted/70">
           人群痛点
         </span>
-        <input
-          type="text"
+        <textarea
+          ref={painRef}
           value={card.targetPainPoint}
           onChange={(e) => update("targetPainPoint", e.target.value)}
+          onInput={(e) => autoResize(e.currentTarget)}
           placeholder="目标受众的核心痛点"
+          rows={1}
           className="w-full rounded-lg border border-border bg-surface px-2 py-1.5 text-[14px] text-ink
-                     placeholder:text-muted/40
+                     placeholder:text-muted/40 resize-none overflow-hidden
                      focus:outline-none focus:border-amber/50 focus:ring-1 focus:ring-amber/20
                      transition-colors duration-200"
         />
@@ -62,13 +85,15 @@ export default function ProductCardForm({ card, onChange, loading }: Props) {
         <span className="text-[14px] font-medium text-muted/70">
           使用场景
         </span>
-        <input
-          type="text"
+        <textarea
+          ref={scenarioRef}
           value={card.usageScenario}
           onChange={(e) => update("usageScenario", e.target.value)}
+          onInput={(e) => autoResize(e.currentTarget)}
           placeholder="产品使用场景"
+          rows={1}
           className="w-full rounded-lg border border-border bg-surface px-2 py-1.5 text-[14px] text-ink
-                     placeholder:text-muted/40
+                     placeholder:text-muted/40 resize-none overflow-hidden
                      focus:outline-none focus:border-amber/50 focus:ring-1 focus:ring-amber/20
                      transition-colors duration-200"
         />
@@ -78,13 +103,15 @@ export default function ProductCardForm({ card, onChange, loading }: Props) {
         <span className="text-[14px] font-medium text-muted/70">
           竞品差异
         </span>
-        <input
-          type="text"
+        <textarea
+          ref={diffRef}
           value={card.competitorDiff}
           onChange={(e) => update("competitorDiff", e.target.value)}
+          onInput={(e) => autoResize(e.currentTarget)}
           placeholder="与竞品的差异化优势"
+          rows={1}
           className="w-full rounded-lg border border-border bg-surface px-2 py-1.5 text-[14px] text-ink
-                     placeholder:text-muted/40
+                     placeholder:text-muted/40 resize-none overflow-hidden
                      focus:outline-none focus:border-amber/50 focus:ring-1 focus:ring-amber/20
                      transition-colors duration-200"
         />

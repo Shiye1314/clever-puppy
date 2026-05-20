@@ -15,7 +15,7 @@ export default function TopNav() {
 
   return (
     <nav className="fixed top-0 inset-x-0 h-[64px] z-50 bg-surface/90 backdrop-blur-sm border-b border-border">
-      <div className="h-full flex items-center justify-between pl-[120px] pr-[120px]">
+      <div className="h-full flex items-center justify-between pl-[55px] pr-[55px]">
         <Link href="/" className="-ml-0.5 overflow-visible" style={{ transform: "scaleY(0.92)", transformOrigin: "center", lineHeight: 1.3 }}>
           <GradientText
             colors={["#1700a6", "#2563eb", "#007cc2", "#4816ff"]}

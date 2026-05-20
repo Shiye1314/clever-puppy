@@ -32,6 +32,7 @@ export default function GeneratePage() {
   const [rewriting, setRewriting] = useState<string | null>(null);
   const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState("");
+  const [categoryMode, setCategoryMode] = useState<"brand" | "niche">("brand");
   const [rewriteRequirement, setRewriteRequirement] = useState("");
   const [agentStatus, setAgentStatus] = useState<{
     extraction: Record<string, unknown>;
@@ -213,13 +214,27 @@ export default function GeneratePage() {
           </div>
         </section>
 
-        {/* 洗稿要求 */}
+        {/* 产品信息卡 */}
         <section>
+          <div className="flex items-center gap-1 mb-2">
+            <span className="w-0.5 h-2 rounded-full bg-amber flex-shrink-0" />
+            <span className="text-[16px] font-medium text-ink">产品信息卡</span>
+          </div>
+          <div className="rounded-xl bg-surface border border-border p-3">
+            <ProductCardForm card={card} onChange={setCard} loading={extracting} />
+          </div>
+        </section>
+      </div>
+
+      {/* 结果区 60% */}
+      <div className="w-[60%] overflow-y-auto scrollbar-hide p-5">
+        {/* 洗稿要求 */}
+        <section className="mb-5">
           <div className="flex items-center gap-1 mb-2">
             <span className="w-0.5 h-2 rounded-full bg-amber flex-shrink-0" />
             <span className="text-[16px] font-medium text-ink">洗稿要求</span>
           </div>
-          <div className="rounded-xl bg-surface border border-border p-3">
+          <div className="rounded-xl bg-surface border border-border p-3 space-y-3">
             <textarea
               value={rewriteRequirement}
               onChange={(e) => setRewriteRequirement(e.target.value)}
@@ -229,21 +244,36 @@ export default function GeneratePage() {
                          focus:outline-none focus:border-amber/50 focus:ring-1 focus:ring-amber/20
                          transition-colors duration-200"
             />
-          </div>
-        </section>
 
-        {/* 产品信息卡 */}
-        <section>
-          <div className="flex items-center gap-1 mb-2">
-            <span className="w-0.5 h-2 rounded-full bg-amber flex-shrink-0" />
-            <span className="text-[16px] font-medium text-ink">产品信息卡</span>
-          </div>
-          <div className="rounded-xl bg-surface border border-border p-3 space-y-3">
-            <ProductCardForm card={card} onChange={setCard} loading={extracting} />
-
-            <div className="flex items-center gap-1 pt-1">
-              <span className="w-0.5 h-2 rounded-full bg-amber flex-shrink-0" />
-              <span className="text-[14px] font-medium text-muted/70">写作风格</span>
+            {/* 写作风格 */}
+            <div className="flex items-center justify-between pt-1">
+              <div className="flex items-center gap-1">
+                <span className="w-0.5 h-2 rounded-full bg-amber flex-shrink-0" />
+                <span className="text-[14px] font-medium text-muted/70">写作风格</span>
+              </div>
+              {/* 模式切换 */}
+              <div className="flex rounded-lg border border-border bg-paper p-0.5">
+                <button
+                  onClick={() => setCategoryMode("brand")}
+                  className={`px-2.5 py-1 text-[13px] font-medium rounded-md transition-all ${
+                    categoryMode === "brand"
+                      ? "bg-amber text-white shadow-sm"
+                      : "text-muted hover:text-ink"
+                  }`}
+                >
+                  品牌专类
+                </button>
+                <button
+                  onClick={() => setCategoryMode("niche")}
+                  className={`px-2.5 py-1 text-[13px] font-medium rounded-md transition-all ${
+                    categoryMode === "niche"
+                      ? "bg-amber text-white shadow-sm"
+                      : "text-muted hover:text-ink"
+                  }`}
+                >
+                  细分大类
+                </button>
+              </div>
             </div>
             <CategorySelector value={selectedCategory} onChange={setSelectedCategory} />
 
@@ -252,10 +282,7 @@ export default function GeneratePage() {
             </div>
           </div>
         </section>
-      </div>
 
-      {/* 结果区 60% */}
-      <div className="w-[60%] overflow-y-auto p-5">
         <div className="flex items-center gap-1 mb-3">
           <span className="w-0.5 h-2 rounded-full bg-amber flex-shrink-0" />
           <span className="text-[16px] font-medium text-ink">爆文输出</span>

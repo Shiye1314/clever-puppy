@@ -27,17 +27,27 @@ export default function ArticleResult({ sections, onChange, onRewriteSection, lo
 
   return (
     <div className="space-y-2">
-      {editors.map(({ key, label }) => (
-        <div key={key} className="rounded-xl bg-surface border border-border p-3">
-          <SectionEditor
-            label={label}
-            content={sections[key]}
-            onChange={(v) => update(key, v)}
-            onRewrite={() => onRewriteSection(key)}
-            loading={loading === key}
-          />
-        </div>
-      ))}
+      {/* 统一卡片 */}
+      <div className="rounded-xl bg-surface border border-border p-4">
+        {editors.map(({ key, label }, i) => (
+          <div key={key}>
+            <SectionEditor
+              label={label}
+              content={sections[key]}
+              onChange={(v) => update(key, v)}
+              onRewrite={() => onRewriteSection(key)}
+              loading={loading === key}
+            />
+            {/* 虚线分隔（最后一段不加） */}
+            {i < editors.length - 1 && (
+              <div className="py-4">
+                <hr className="border-t border-dashed border-border" />
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
       <div className="pt-1">
         <button
           onClick={() => navigator.clipboard.writeText(fullText)}
