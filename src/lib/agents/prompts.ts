@@ -40,6 +40,10 @@ export const GENERATE_PROMPT = `你是小红书爆文写手。你必须严格复
 
 {bannedWords}
 
+## 用户的额外需求/新想法（必须融入文章）
+
+{rewriteRequirement}
+
 ## 写作结构（严格五段式）
 
 按以下五段输出，用 <section name="..."> 标签分隔：

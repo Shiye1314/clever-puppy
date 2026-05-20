@@ -12,13 +12,15 @@ export interface ArticleSectionsV2 {
 
 export async function generateArticle(
   card: ProductCard, styleDNA: StyleDNA, referenceSamples: string,
-  bannedWords: string[], generationModel: string, apiKey: string, provider: string = "anthropic"
+  bannedWords: string[], generationModel: string, apiKey: string, provider: string = "anthropic",
+  rewriteRequirement: string = ""
 ): Promise<ArticleSectionsV2> {
   const prompt = GENERATE_PROMPT
     .replace("{styleDNA}", JSON.stringify(styleDNA, null, 2))
     .replace("{productCard}", JSON.stringify(card, null, 2))
     .replace("{referenceSamples}", referenceSamples || "无参考范文")
-    .replace("{bannedWords}", bannedWords.join("、") || "无");
+    .replace("{bannedWords}", bannedWords.join("、") || "无")
+    .replace("{rewriteRequirement}", rewriteRequirement || "无额外需求，按默认风格撰写");
 
   const text = await callLLM({ prompt, model: generationModel, maxTokens: 3072, provider: provider as any, apiKey });
   return parseSections(text);

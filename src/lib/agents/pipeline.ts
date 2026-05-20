@@ -11,7 +11,8 @@ const supabaseAdmin = createClient(
 export async function runGeneratePipeline(
   rawContent: string,
   productCardOverride?: Partial<ProductCard>,
-  categoryId?: string
+  categoryId?: string,
+  rewriteRequirement?: string
 ) {
   const supabaseAdmin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -102,7 +103,7 @@ export async function runGeneratePipeline(
 
   // 7. 生成爆文
   const sections = await generateArticle(
-    card, styleDNA, referenceText, bannedWords, generationModel, apiKey, provider
+    card, styleDNA, referenceText, bannedWords, generationModel, apiKey, provider, rewriteRequirement
   );
 
   return {
@@ -110,6 +111,7 @@ export async function runGeneratePipeline(
     sections,
     styleDNA,
     categoryId,
+    rewriteRequirement,
     // 返回中间产物供UI展示
     agents: {
       extraction: extractedCard,

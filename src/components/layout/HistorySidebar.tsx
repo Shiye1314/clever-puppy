@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from "@/lib/supabase/client";
 import type { Task } from "@/lib/types";
 
 interface Props {
@@ -13,12 +12,9 @@ export default function HistorySidebar({ onSelectTask }: Props) {
   const [tasks, setTasks] = useState<Task[]>([]);
 
   const loadTasks = useCallback(async () => {
-    const { data } = await supabase
-      .from("tasks")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(100);
-    if (data) setTasks(data as Task[]);
+    const res = await fetch("/api/tasks");
+    const data = await res.json();
+    if (Array.isArray(data)) setTasks(data as Task[]);
   }, []);
 
   useEffect(() => {
@@ -27,7 +23,7 @@ export default function HistorySidebar({ onSelectTask }: Props) {
 
   const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    await supabase.from("tasks").delete().eq("id", id);
+    await fetch(`/api/tasks?id=${id}`, { method: "DELETE" });
     loadTasks();
   };
 

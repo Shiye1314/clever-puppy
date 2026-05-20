@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import StarBorder from "@/components/ui/StarBorder";
+import { useState, useEffect, useRef } from "react";
+import { AnimatedItem, ScrollGradient } from "@/components/ui/AnimatedList";
 import type { StyleDNA } from "@/lib/types";
 
 const defaultDna: StyleDNA = {
@@ -22,6 +22,7 @@ export default function StylePage() {
   const [saved, setSaved] = useState(false);
   const [categories, setCategories] = useState<Array<{id: string; name: string; writing_samples_count: number; updated_at: string}>>([]);
   const [batchLearning, setBatchLearning] = useState(false);
+  const categoryScrollRef = useRef<HTMLDivElement>(null);
   const [batchResult, setBatchResult] = useState<{
     totalArticles: number; classified: number; categoriesFound: number;
     dnaUpdated: number; categories: Array<{ categoryId: string; categoryName: string; articleCount: number }>;
@@ -191,14 +192,12 @@ export default function StylePage() {
             </div>
           </div>
 
-          <StarBorder as="div" color="#60a5fa" speed="5s" className="mt-5 mb-4">
-            <button
-              onClick={handleSave}
-              className="px-5 py-1.5 bg-amber text-white text-[16px] font-medium tracking-wide rounded-lg hover:bg-amber/90 transition-colors"
-            >
-              {saved ? "已保存" : "保存风格档案"}
-            </button>
-          </StarBorder>
+          <button
+            onClick={handleSave}
+            className="mt-5 px-5 py-1.5 bg-amber text-white text-[16px] font-medium tracking-wide rounded-lg hover:bg-amber/90 transition-colors"
+          >
+            {saved ? "已保存" : "保存风格档案"}
+          </button>
         </section>
       </div>
 
@@ -206,7 +205,7 @@ export default function StylePage() {
       <div className="w-px bg-border flex-shrink-0" />
 
       {/* 右侧 — 大类管理 */}
-      <div className="w-[300px] flex-shrink-0 overflow-y-auto scrollbar-hide py-7 pl-8">
+      <div className="w-[300px] flex-shrink-0 relative py-7 pl-8">
         <div className="flex items-center gap-1.5 mb-1.5">
           <span className="w-0.5 h-2 rounded-full bg-amber flex-shrink-0" />
           <h2 className="text-[16px] font-medium text-ink">大类管理</h2>
@@ -215,26 +214,32 @@ export default function StylePage() {
           每个品类独立学习写作风格，投喂越多，模仿越精准
         </p>
 
-        <div className="space-y-1.5">
-          {categories.map((cat) => (
-            <div
-              key={cat.id}
-              onClick={() => handleViewCategory(cat.id)}
-              className="group rounded-lg border border-border bg-surface p-3 cursor-pointer transition-all duration-200 hover:border-amber hover:shadow-sm"
-            >
-              <div className="flex items-end justify-between">
-                <span className="text-[19px] font-semibold text-ink group-hover:text-amber transition-colors">
-                  {cat.name}
-                </span>
-                <span className="text-[45px] leading-none font-bold text-muted/8 tabular-nums group-hover:text-amber/10 transition-colors">
-                  {cat.writing_samples_count}
-                </span>
-              </div>
-              <p className="text-[14px] text-muted/40 mt-1">
-                {new Date(cat.updated_at).toLocaleDateString("zh-CN")}
-              </p>
-            </div>
-          ))}
+        <div
+          ref={categoryScrollRef}
+          className="max-h-[calc(100vh-280px)] overflow-y-auto scrollbar-hide"
+        >
+          <div className="space-y-1.5">
+            {categories.map((cat, i) => (
+              <AnimatedItem key={cat.id} delay={i * 0.04}>
+                <div
+                  onClick={() => handleViewCategory(cat.id)}
+                  className="group rounded-lg border border-border bg-surface p-3 cursor-pointer transition-all duration-200 hover:border-amber hover:shadow-sm"
+                >
+                  <div className="flex items-end justify-between">
+                    <span className="text-[19px] font-semibold text-ink group-hover:text-amber transition-colors">
+                      {cat.name}
+                    </span>
+                    <span className="text-[45px] leading-none font-bold text-muted/8 tabular-nums group-hover:text-amber/10 transition-colors">
+                      {cat.writing_samples_count}
+                    </span>
+                  </div>
+                  <p className="text-[14px] text-muted/40 mt-1">
+                    {new Date(cat.updated_at).toLocaleDateString("zh-CN")}
+                  </p>
+                </div>
+              </AnimatedItem>
+            ))}
+          </div>
           {categories.length === 0 && (
             <div className="py-8 text-center">
               <p className="text-[16px] text-muted/30">暂无品类</p>
@@ -242,6 +247,8 @@ export default function StylePage() {
             </div>
           )}
         </div>
+
+        <ScrollGradient scrollRef={categoryScrollRef} color="#FAFBFC" />
       </div>
     </div>
   );

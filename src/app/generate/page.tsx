@@ -7,10 +7,8 @@ import ArticleResult from "@/components/generate/ArticleResult";
 import CategorySelector from "@/components/generate/CategorySelector";
 import AgentStatus from "@/components/generate/AgentStatus";
 import EmpowerButton from "@/components/ui/EmpowerButton";
-import StarBorder from "@/components/ui/StarBorder";
 import type { ProductCard } from "@/lib/types";
 import type { ArticleSectionsV2 } from "@/lib/agents/generator";
-import { supabase } from "@/lib/supabase/client";
 
 const emptyCard: ProductCard = {
   productName: "",
@@ -34,6 +32,7 @@ export default function GeneratePage() {
   const [rewriting, setRewriting] = useState<string | null>(null);
   const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState("");
+  const [rewriteRequirement, setRewriteRequirement] = useState("");
   const [agentStatus, setAgentStatus] = useState<{
     extraction: Record<string, unknown>;
     research: Record<string, unknown>;
@@ -77,7 +76,7 @@ export default function GeneratePage() {
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: rawContent, productCardOverride: card, categoryId: selectedCategory || undefined }),
+        body: JSON.stringify({ content: rawContent, productCardOverride: card, categoryId: selectedCategory || undefined, rewriteRequirement: rewriteRequirement || undefined }),
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
@@ -90,18 +89,22 @@ export default function GeneratePage() {
       setCard(data.card);
 
       // 自动保存历史
-      const { data: task } = await supabase.from("tasks").insert({
-        task_type: "generate",
-        module: "generate",
-        title: data.card.productName || fileName || "素材生成",
-        input_data: { rawContent, fileName, productCard: data.card },
-        product_card: data.card,
-        output_data: data.sections,
-        metadata: {},
-        category_id: selectedCategory || null,
-      }).select().single();
-
-      if (task) setCurrentTaskId(task.id);
+      const saveRes = await fetch("/api/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          task_type: "generate",
+          module: "generate",
+          title: data.card.productName || fileName || "素材生成",
+          input_data: { rawContent, fileName, productCard: data.card, rewriteRequirement },
+          product_card: data.card,
+          output_data: data.sections,
+          metadata: { rewriteRequirement },
+          category_id: selectedCategory || null,
+        }),
+      });
+      const savedTask = await saveRes.json();
+      if (savedTask?.id) setCurrentTaskId(savedTask.id);
 
       // 自动分类
       if (!selectedCategory && data.card.productName) {
@@ -134,10 +137,14 @@ export default function GeneratePage() {
 
       // 更新历史
       if (currentTaskId) {
-        await supabase.from("tasks").update({
-          output_data: updated,
-          updated_at: new Date().toISOString(),
-        }).eq("id", currentTaskId);
+        await fetch(`/api/tasks?id=${currentTaskId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            output_data: updated,
+            updated_at: new Date().toISOString(),
+          }),
+        });
       }
     } catch (err) {
       alert("重写失败: " + (err as Error).message);
@@ -148,29 +155,39 @@ export default function GeneratePage() {
   const handleSave = async () => {
     if (currentTaskId) {
       // 已存在记录 → 更新
-      const { error } = await supabase.from("tasks").update({
-        product_card: card,
-        output_data: sections,
-        category_id: selectedCategory || null,
-        updated_at: new Date().toISOString(),
-      }).eq("id", currentTaskId);
-      if (!error) alert("已更新历史记录");
-      else alert("更新失败: " + error.message);
+      const res = await fetch(`/api/tasks?id=${currentTaskId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          product_card: card,
+          output_data: sections,
+          metadata: { rewriteRequirement },
+          category_id: selectedCategory || null,
+          updated_at: new Date().toISOString(),
+        }),
+      });
+      const result = await res.json();
+      if (!result.error) alert("已更新历史记录");
+      else alert("更新失败: " + result.error);
       return;
     }
 
-    const { data: task } = await supabase.from("tasks").insert({
-      task_type: "generate",
-      module: "generate",
-      title: card.productName || fileName || "素材生成",
-      input_data: { rawContent, fileName, productCard: card },
-      product_card: card,
-      output_data: sections,
-      metadata: {},
-      category_id: selectedCategory || null,
-    }).select().single();
-
-    if (task) setCurrentTaskId(task.id);
+    const res = await fetch("/api/tasks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        task_type: "generate",
+        module: "generate",
+        title: card.productName || fileName || "素材生成",
+        input_data: { rawContent, fileName, productCard: card, rewriteRequirement },
+        product_card: card,
+        output_data: sections,
+        metadata: { rewriteRequirement },
+        category_id: selectedCategory || null,
+      }),
+    });
+    const task = await res.json();
+    if (task?.id) setCurrentTaskId(task.id);
     alert("已保存到历史记录");
   };
 
@@ -196,7 +213,26 @@ export default function GeneratePage() {
           </div>
         </section>
 
-        {/* Step 2 */}
+        {/* 洗稿要求 */}
+        <section>
+          <div className="flex items-center gap-1 mb-2">
+            <span className="w-0.5 h-2 rounded-full bg-amber flex-shrink-0" />
+            <span className="text-[16px] font-medium text-ink">洗稿要求</span>
+          </div>
+          <div className="rounded-xl bg-surface border border-border p-3">
+            <textarea
+              value={rewriteRequirement}
+              onChange={(e) => setRewriteRequirement(e.target.value)}
+              placeholder="输入你的新想法、新需求、新要求，AI 会根据这些额外要求进行爆文撰写。例如：强调性价比、突出限时优惠、加入品牌故事..."
+              className="w-full min-h-[120px] rounded-lg border border-border bg-paper px-2 py-1.5 text-[14px] text-ink
+                         placeholder:text-muted/40 resize-y
+                         focus:outline-none focus:border-amber/50 focus:ring-1 focus:ring-amber/20
+                         transition-colors duration-200"
+            />
+          </div>
+        </section>
+
+        {/* 产品信息卡 */}
         <section>
           <div className="flex items-center gap-1 mb-2">
             <span className="w-0.5 h-2 rounded-full bg-amber flex-shrink-0" />
@@ -211,10 +247,8 @@ export default function GeneratePage() {
             </div>
             <CategorySelector value={selectedCategory} onChange={setSelectedCategory} />
 
-            <div className="py-3">
-              <StarBorder as="div" color="#60a5fa" speed="5s" className="w-full">
-                <EmpowerButton onClick={handleGenerate} loading={generating} />
-              </StarBorder>
+            <div className="pt-1">
+              <EmpowerButton onClick={handleGenerate} loading={generating} />
             </div>
           </div>
         </section>

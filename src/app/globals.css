@@ -16,6 +16,7 @@
   --animate-breathe: breathe 2s ease-in-out infinite;
   --animate-star-movement-bottom: star-movement-bottom linear infinite alternate;
   --animate-star-movement-top: star-movement-top linear infinite alternate;
+  --animate-gradient-text: gradientText 20s ease-in-out infinite alternate;
 }
 
 @keyframes flowLine {
@@ -36,6 +37,11 @@
 @keyframes star-movement-top {
   0% { transform: translate(0%, 0%); opacity: 1; }
   100% { transform: translate(100%, 0%); opacity: 0; }
+}
+
+@keyframes gradientText {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 300% 50%; }
 }
 
 @layer base {
