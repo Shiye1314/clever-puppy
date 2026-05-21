@@ -8,6 +8,22 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+// 取前200字符作为指纹，用于去重
+function makeFingerprint(article: string): string {
+  return article.trim().slice(0, 200).replace(/\s+/g, " ");
+}
+
+// 检查范文是否已存在于指定分类中
+async function checkDuplicate(categoryId: string, fingerprint: string): Promise<boolean> {
+  const { data } = await supabaseAdmin
+    .from("writing_samples")
+    .select("id")
+    .eq("category_id", categoryId)
+    .ilike("content", `${fingerprint.slice(0, 100)}%`)
+    .limit(1);
+  return (data?.length ?? 0) > 0;
+}
+
 export async function POST(request: Request) {
   const { content, category_type } = await request.json();
   if (!content) return NextResponse.json({ error: "请提供范文内容" }, { status: 400 });
@@ -31,6 +47,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "未检测到有效文章（每篇需>50字，用 --- 分隔）" }, { status: 400 });
   }
 
+  // 预处理：每篇文章的指纹（用于前端清除）
+  const articleFingerprints = articles.map((a) => a.trim().slice(0, 80));
+
   // ============================================================
   // 品牌大类模式
   // ============================================================
@@ -44,11 +63,21 @@ export async function POST(request: Request) {
       const brandText = await callLLM({
         prompt: brandPrompt,
         model: "deepseek-v4-pro",
-        maxTokens: 128,
+        maxTokens: 256,
         provider: provider as any,
         apiKey,
       });
-      const { brandName } = extractJSON(brandText) as { brandName: string };
+
+      let brandName: string;
+      try {
+        const parsed = extractJSON(brandText) as { brandName: string };
+        brandName = parsed.brandName;
+      } catch (jsonErr) {
+        const rawPreview = brandText.slice(0, 300) || "(空)";
+        return NextResponse.json({
+          error: `品牌提取失败: ${(jsonErr as Error).message} | LLM原始返回: ${rawPreview}`,
+        }, { status: 500 });
+      }
 
       if (!brandName || brandName === "未识别") {
         return NextResponse.json({ error: "未能从文章中识别出品牌名，请在投喂内容开头注明品牌名" }, { status: 400 });
@@ -60,7 +89,6 @@ export async function POST(request: Request) {
         .select("id, name, style_dna, writing_samples_count")
         .ilike("name", `%${brandName}%`);
 
-      // 在品牌大类中匹配（style_dna->>category_type === "brand"）
       const existingBrand = (existingBrands ?? []).find(
         (b: Record<string, unknown>) =>
           ((b.style_dna as Record<string, unknown>)?.category_type as string) === "brand"
@@ -72,7 +100,6 @@ export async function POST(request: Request) {
       if (existingBrand) {
         categoryId = existingBrand.id as string;
       } else {
-        // 新建品牌大类
         const { data: newCat, error: createErr } = await supabaseAdmin
           .from("categories")
           .insert({
@@ -90,14 +117,30 @@ export async function POST(request: Request) {
         isNew = true;
       }
 
-      // Step 3: 存入范文库（全部文章 → 同一个品牌分类）
-      for (const article of articles) {
-        await supabaseAdmin.from("writing_samples").insert({
-          content: article,
-          category_id: categoryId,
-          source_type: "upload",
-          title: article.slice(0, 50),
-        });
+      // Step 3: 存入范文库 — 逐篇去重
+      let newCount = 0;
+      let skippedCount = 0;
+      const processedFingerprints: string[] = [];
+
+      for (let i = 0; i < articles.length; i++) {
+        const article = articles[i];
+        const fingerprint = makeFingerprint(article);
+        const isDuplicate = await checkDuplicate(categoryId, fingerprint);
+
+        if (isDuplicate) {
+          skippedCount++;
+          // 即使跳过，也标记为"已处理"（前端清除）
+          processedFingerprints.push(articleFingerprints[i]);
+        } else {
+          await supabaseAdmin.from("writing_samples").insert({
+            content: article,
+            category_id: categoryId,
+            source_type: "upload",
+            title: article.slice(0, 50),
+          });
+          newCount++;
+          processedFingerprints.push(articleFingerprints[i]);
+        }
       }
 
       // Step 4: 持续学习 — 加载该品牌的所有历史范文（旧+新），一起分析
@@ -120,11 +163,21 @@ export async function POST(request: Request) {
       const styleText = await callLLM({
         prompt: stylePrompt,
         model: "deepseek-v4-pro",
-        maxTokens: 2048,
+        maxTokens: 4096,
         provider: provider as any,
         apiKey,
       });
-      const dnaJson = extractJSON(styleText);
+
+      let dnaJson: Record<string, unknown>;
+      try {
+        dnaJson = extractJSON(styleText);
+      } catch (dnaErr) {
+        const rawPreview = styleText.slice(0, 500) || "(空)";
+        return NextResponse.json({
+          error: `风格DNA解析失败: ${(dnaErr as Error).message} | LLM原始返回: ${rawPreview}`,
+        }, { status: 500 });
+      }
+
       const mergedDna = { ...dnaJson, category_type: "brand" };
 
       await supabaseAdmin
@@ -141,9 +194,11 @@ export async function POST(request: Request) {
         brandName,
         categoryId,
         isNewBrand: isNew,
-        totalArticles: articles.length,
+        newCount,
+        skippedCount,
         totalAccumulated: totalCount,
         dnaUpdated: 1,
+        processedFingerprints,
         categories: [{ categoryId, categoryName: brandName, articleCount: totalCount }],
       });
     } catch (err) {
@@ -152,17 +207,23 @@ export async function POST(request: Request) {
   }
 
   // ============================================================
-  // 细分大类模式（原有逻辑）
+  // 细分大类模式（原有逻辑 + 去重 + 指纹返回）
   // ============================================================
   const results: Array<{
     article: string;
     categoryName: string;
     categoryId: string;
     isNewCategory: boolean;
+    fingerprint: string;
   }> = [];
 
+  const processedFingerprints: string[] = [];
+  let newCount = 0;
+  let skippedCount = 0;
+
   // Step 1: 逐篇分类
-  for (const article of articles) {
+  for (let i = 0; i < articles.length; i++) {
+    const article = articles[i];
     try {
       const classifyPrompt = NICHE_CLASSIFY_PROMPT.replace("{content}", article.slice(0, 2000));
       const classifyText = await callLLM({
@@ -185,7 +246,6 @@ export async function POST(request: Request) {
         (c: Record<string, unknown>) => {
           const dna = c.style_dna as Record<string, unknown>;
           const ct = dna?.category_type as string | undefined;
-          // 匹配 niche 或无标记的（兼容旧数据）
           return ct === "niche" || !ct;
         }
       );
@@ -209,21 +269,38 @@ export async function POST(request: Request) {
         isNew = true;
       }
 
-      // 存入范文库
-      await supabaseAdmin.from("writing_samples").insert({
-        content: article,
-        category_id: categoryId,
-        source_type: "upload",
-        title: article.slice(0, 50),
-      });
+      // 去重检查
+      const fingerprint = makeFingerprint(article);
+      const isDuplicate = await checkDuplicate(categoryId, fingerprint);
 
-      results.push({ article: article.slice(0, 80), categoryName, categoryId, isNewCategory: isNew });
+      if (isDuplicate) {
+        skippedCount++;
+        processedFingerprints.push(articleFingerprints[i]);
+      } else {
+        await supabaseAdmin.from("writing_samples").insert({
+          content: article,
+          category_id: categoryId,
+          source_type: "upload",
+          title: article.slice(0, 50),
+        });
+        newCount++;
+        processedFingerprints.push(articleFingerprints[i]);
+      }
+
+      results.push({
+        article: article.slice(0, 80),
+        categoryName,
+        categoryId,
+        isNewCategory: isNew,
+        fingerprint: articleFingerprints[i],
+      });
     } catch {
+      // 分类或入库失败，不加入 processedFingerprints（前端不清除，等待重试）
       continue;
     }
   }
 
-  // Step 2: 按大类分组，持续学习 — 每组加载所有历史范文
+  // Step 2: 按大类分组，持续学习
   const categoryGroups = new Map<string, string[]>();
   const categoryNames = new Map<string, string>();
 
@@ -241,7 +318,6 @@ export async function POST(request: Request) {
     if (categoryArticles.length < 1) continue;
 
     try {
-      // 加载该分类的所有历史范文（持续学习）
       const { data: allSamples } = await supabaseAdmin
         .from("writing_samples")
         .select("content")
@@ -260,11 +336,21 @@ export async function POST(request: Request) {
       const styleText = await callLLM({
         prompt: stylePrompt,
         model: "deepseek-v4-pro",
-        maxTokens: 2048,
+        maxTokens: 4096,
         provider: provider as any,
         apiKey,
       });
-      const dnaJson = extractJSON(styleText);
+
+      let dnaJson: Record<string, unknown>;
+      try {
+        dnaJson = extractJSON(styleText);
+      } catch (dnaErr) {
+        const rawPreview = styleText.slice(0, 500) || "(空)";
+        return NextResponse.json({
+          error: `风格DNA解析失败: ${(dnaErr as Error).message} | LLM原始返回: ${rawPreview}`,
+        }, { status: 500 });
+      }
+
       const mergedDna = { ...dnaJson, category_type: "niche" };
 
       await supabaseAdmin
@@ -288,10 +374,12 @@ export async function POST(request: Request) {
 
   return NextResponse.json({
     mode: "niche",
-    totalArticles: articles.length,
+    newCount,
+    skippedCount,
     classified: results.length,
     categoriesFound: categoryGroups.size,
     dnaUpdated: dnaResults.length,
+    processedFingerprints,
     categories: dnaResults,
   });
 }

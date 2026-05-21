@@ -12,6 +12,6 @@ export async function integrateBrief(
   const prompt = INTEGRATOR_PROMPT
     .replace("{productCard}", JSON.stringify(productCard, null, 2))
     .replace("{marketResearch}", JSON.stringify(marketResearch, null, 2));
-  const text = await callLLM({ prompt, model, maxTokens: 1024, provider: provider as any, apiKey });
+  const text = await callLLM({ prompt, model, maxTokens: 2048, provider: provider as any, apiKey });
   return extractJSON(text) as any;
 }

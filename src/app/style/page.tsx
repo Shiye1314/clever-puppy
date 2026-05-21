@@ -25,9 +25,18 @@ export default function StylePage() {
   const [learnMode, setLearnMode] = useState<"brand" | "niche">("niche");
   const [selectedType, setSelectedType] = useState<"brand" | "niche">("niche");
   const nicheScrollRef = useRef<HTMLDivElement>(null);
+  const samplesRef = useRef<HTMLTextAreaElement>(null);
+
+  // 自延框：输入栏随内容自动延伸高度
+  useEffect(() => {
+    const el = samplesRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = el.scrollHeight + "px";
+  }, [samples]);
   const [batchResult, setBatchResult] = useState<{
     mode?: string; brandName?: string; isNewBrand?: boolean;
-    totalArticles: number; totalAccumulated?: number;
+    newCount?: number; skippedCount?: number; totalAccumulated?: number;
     classified?: number; categoriesFound?: number;
     dnaUpdated: number; categories: Array<{ categoryId: string; categoryName: string; articleCount: number }>;
   } | null>(null);
@@ -62,12 +71,27 @@ export default function StylePage() {
       if (data.error) throw new Error(data.error);
       setBatchResult(data);
       refreshCategories();
-      // 品牌模式：学习成功后自动切换右侧面板到对应类型
       if (data.mode === "brand") setSelectedType("brand");
+
+      // 增量清除：从输入框中删除已成功处理的文章
+      if (data.processedFingerprints && data.processedFingerprints.length > 0) {
+        const remaining = removeProcessedArticles(samples, data.processedFingerprints);
+        setSamples(remaining);
+      }
     } catch (err) {
       alert("批量学习失败: " + (err as Error).message);
     }
     setBatchLearning(false);
+  };
+
+  // 按指纹移除已处理的文章（指纹 = 每篇前80字符），保留未处理的
+  const removeProcessedArticles = (text: string, fingerprints: string[]): string => {
+    const blocks = text.split(/---+/).map((b) => b.trim()).filter((b) => b.length > 50);
+    const remaining = blocks.filter((block) => {
+      const fp = block.slice(0, 80);
+      return !fingerprints.some((f) => fp === f);
+    });
+    return remaining.length > 0 ? remaining.join("\n\n---\n\n") : "";
   };
 
   const handleSave = async () => {
@@ -125,6 +149,7 @@ export default function StylePage() {
             </div>
           </div>
           <textarea
+            ref={samplesRef}
             value={samples}
             onChange={(e) => setSamples(e.target.value)}
             placeholder={
@@ -132,7 +157,7 @@ export default function StylePage() {
                 ? "粘贴同一品牌的多篇爆文，每篇用 --- 分隔。Agent 将自动识别品牌名并学习其写作风格"
                 : "粘贴爆文代表作，每篇用 --- 分隔。Agent 将自动分类并学习各品类的写作风格"
             }
-            className="w-full h-[176px] rounded-lg border border-border bg-surface p-2 text-[14px] leading-relaxed resize-y placeholder:text-muted/40 focus:outline-none focus:border-amber/50 transition-colors"
+            className="w-full min-h-[176px] rounded-lg border border-border bg-surface p-2 text-[14px] leading-relaxed resize-none overflow-hidden placeholder:text-muted/40 focus:outline-none focus:border-amber/50 transition-colors"
           />
           <div className="flex items-center gap-2 mt-2">
             <button
@@ -145,8 +170,8 @@ export default function StylePage() {
             {batchResult && (
               <span className="text-[14px] text-muted/50">
                 {batchResult.mode === "brand"
-                  ? `品牌「${batchResult.brandName}」${batchResult.isNewBrand ? "新建" : "已有"} · ${batchResult.totalAccumulated ?? batchResult.totalArticles} 篇范文 · DNA 已更新`
-                  : `${batchResult.totalArticles} 篇 → ${batchResult.categoriesFound} 品类 · ${batchResult.dnaUpdated} DNA 更新`
+                  ? `品牌「${batchResult.brandName}」${batchResult.isNewBrand ? "新建" : "已有"} · 新增${batchResult.newCount ?? 0}篇${batchResult.skippedCount ? `（跳过${batchResult.skippedCount}篇重复）` : ""} · 累计${batchResult.totalAccumulated}篇 · DNA已更新`
+                  : `新增${batchResult.newCount ?? 0}篇${batchResult.skippedCount ? `（跳过${batchResult.skippedCount}篇重复）` : ""} → ${batchResult.categoriesFound} 品类 · ${batchResult.dnaUpdated} DNA更新`
                 }
               </span>
             )}
@@ -260,16 +285,6 @@ export default function StylePage() {
         {/* 类型切换 Tab */}
         <div className="flex rounded-lg border border-border bg-paper p-0.5 mb-3">
           <button
-            onClick={() => setSelectedType("niche")}
-            className={`flex-1 px-2 py-1 text-[12px] font-medium rounded-md transition-all ${
-              selectedType === "niche"
-                ? "bg-amber text-white shadow-sm"
-                : "text-muted hover:text-ink"
-            }`}
-          >
-            细分大类
-          </button>
-          <button
             onClick={() => setSelectedType("brand")}
             className={`flex-1 px-2 py-1 text-[12px] font-medium rounded-md transition-all ${
               selectedType === "brand"
@@ -279,13 +294,52 @@ export default function StylePage() {
           >
             品牌大类
           </button>
+          <button
+            onClick={() => setSelectedType("niche")}
+            className={`flex-1 px-2 py-1 text-[12px] font-medium rounded-md transition-all ${
+              selectedType === "niche"
+                ? "bg-amber text-white shadow-sm"
+                : "text-muted hover:text-ink"
+            }`}
+          >
+            细分大类
+          </button>
         </div>
 
         <div
           ref={nicheScrollRef}
           className="max-h-[calc(100vh-340px)] overflow-y-auto scrollbar-hide"
         >
-          {selectedType === "niche" ? (
+          {selectedType === "brand" ? (
+            <div className="space-y-1.5">
+              {brandCategories.map((cat, i) => (
+                <AnimatedItem key={cat.id} delay={i * 0.04}>
+                  <div
+                    onClick={() => handleViewCategory(cat.id)}
+                    className="group rounded-lg border border-border bg-surface p-3 cursor-pointer transition-all duration-200 hover:border-amber hover:shadow-sm"
+                  >
+                    <div className="flex items-end justify-between">
+                      <span className="text-[19px] font-semibold text-ink group-hover:text-amber transition-colors">
+                        {cat.name}
+                      </span>
+                      <span className="text-[45px] leading-none font-bold text-muted/8 tabular-nums group-hover:text-amber/10 transition-colors">
+                        {cat.writing_samples_count}
+                      </span>
+                    </div>
+                    <p className="text-[14px] text-muted/40 mt-1">
+                      {new Date(cat.updated_at).toLocaleDateString("zh-CN")}
+                    </p>
+                  </div>
+                </AnimatedItem>
+              ))}
+              {brandCategories.length === 0 && (
+                <div className="py-8 text-center">
+                  <p className="text-[16px] text-muted/30">暂无品牌大类</p>
+                  <p className="text-[14px] text-muted/20 mt-0.5">在左侧导入品牌范文</p>
+                </div>
+              )}
+            </div>
+          ) : (
             <div className="space-y-1.5">
               {nicheCategories.map((cat, i) => (
                 <AnimatedItem key={cat.id} delay={i * 0.04}>
@@ -311,35 +365,6 @@ export default function StylePage() {
                 <div className="py-8 text-center">
                   <p className="text-[16px] text-muted/30">暂无细分大类</p>
                   <p className="text-[14px] text-muted/20 mt-0.5">导入范文后自动分类</p>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-1.5">
-              {brandCategories.map((cat, i) => (
-                <AnimatedItem key={cat.id} delay={i * 0.04}>
-                  <div
-                    onClick={() => handleViewCategory(cat.id)}
-                    className="group rounded-lg border border-border bg-surface p-3 cursor-pointer transition-all duration-200 hover:border-amber hover:shadow-sm"
-                  >
-                    <div className="flex items-end justify-between">
-                      <span className="text-[19px] font-semibold text-ink group-hover:text-amber transition-colors">
-                        {cat.name}
-                      </span>
-                      <span className="text-[45px] leading-none font-bold text-muted/8 tabular-nums group-hover:text-amber/10 transition-colors">
-                        {cat.writing_samples_count}
-                      </span>
-                    </div>
-                    <p className="text-[14px] text-muted/40 mt-1">
-                      {new Date(cat.updated_at).toLocaleDateString("zh-CN")}
-                    </p>
-                  </div>
-                </AnimatedItem>
-              ))}
-              {brandCategories.length === 0 && (
-                <div className="py-8 text-center">
-                  <p className="text-[16px] text-muted/30">暂无品牌大类</p>
-                  <p className="text-[14px] text-muted/20 mt-0.5">在左侧创建品牌大类</p>
                 </div>
               )}
             </div>
