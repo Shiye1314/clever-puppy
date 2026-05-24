@@ -1,6 +1,16 @@
 [build]
   command = "npx next build"
-  publish = ".next"
+  publish = ".next/standalone"
 
-[[plugins]]
-  package = "@netlify/plugin-nextjs"
+[build.environment]
+  NEXT_USE_NETLIFY_EDGE = "false"
+
+[[redirects]]
+  from = "/_next/static/*"
+  to = "/.next/static/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/_next/image"
+  to = "/.netlify/build/_ipx"
+  status = 200
