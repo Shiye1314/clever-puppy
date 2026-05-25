@@ -48,7 +48,7 @@ export async function POST(request: Request) {
   }
 
   // 预处理：每篇文章的指纹（用于前端清除）
-  const articleFingerprints = articles.map((a) => a.trim().slice(0, 80));
+  const articleFingerprints = articles.map((a: string) => a.trim().slice(0, 80));
 
   // ============================================================
   // 品牌大类模式
