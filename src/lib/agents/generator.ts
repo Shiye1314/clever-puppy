@@ -22,7 +22,7 @@ export async function generateArticle(
     .replace("{bannedWords}", bannedWords.join("、") || "无")
     .replace("{rewriteRequirement}", rewriteRequirement || "无额外需求，按默认风格撰写");
 
-  const text = await callLLM({ prompt, model: generationModel, maxTokens: 3072, provider: provider as any, apiKey });
+  const text = await callLLM({ prompt, model: generationModel, maxTokens: 4096, provider: provider as any, apiKey, system: "你是一个小红书爆文写手。按提示词的格式要求输出完整文章内容。" });
   return parseSections(text);
 }
 
@@ -42,7 +42,7 @@ export async function rewriteSection(
     .replace("{sectionName}", sectionName)
     .replace("{currentContent}", currentContent);
 
-  return callLLM({ prompt, model, maxTokens: 1536, provider: provider as any, apiKey });
+  return callLLM({ prompt, model, maxTokens: 1536, provider: provider as any, apiKey, system: "你是一个小红书爆文写手。按要求重写指定段落。" });
 }
 
 function parseSections(text: string): ArticleSectionsV2 {

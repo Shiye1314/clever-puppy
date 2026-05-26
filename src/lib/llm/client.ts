@@ -6,6 +6,7 @@ interface LLMCallParams {
   maxTokens?: number;
   provider?: LLMProvider;
   apiKey?: string;
+  system?: string;
 }
 
 export async function callLLM(params: LLMCallParams): Promise<string> {
@@ -24,7 +25,7 @@ export async function callLLM(params: LLMCallParams): Promise<string> {
       body: JSON.stringify({
         model: params.model || "claude-sonnet-4-6",
         max_tokens: params.maxTokens || 2048,
-        system: "你是一个 JSON 生成器。只输出合法的 JSON 对象，不要输出任何解释、说明或 markdown 标记。回复必须以 { 开头、以 } 结尾。",
+        system: params.system ?? "你是一个 JSON 生成器。只输出合法的 JSON 对象，不要输出任何解释、说明或 markdown 标记。回复必须以 { 开头、以 } 结尾。",
         messages: [{ role: "user", content: params.prompt }],
       }),
     });
@@ -46,7 +47,7 @@ export async function callLLM(params: LLMCallParams): Promise<string> {
       model: params.model || "deepseek-v4-pro",
       max_tokens: params.maxTokens || 2048,
       messages: [
-        { role: "system", content: "你是一个 JSON 生成器。只输出合法的 JSON 对象，不要输出任何解释、说明或 markdown 标记。回复必须以 { 开头、以 } 结尾。" },
+        { role: "system", content: params.system ?? "你是一个 JSON 生成器。只输出合法的 JSON 对象，不要输出任何解释、说明或 markdown 标记。回复必须以 { 开头、以 } 结尾。" },
         { role: "user", content: params.prompt },
       ],
     }),

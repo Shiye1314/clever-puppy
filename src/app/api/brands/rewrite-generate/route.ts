@@ -118,9 +118,10 @@ export async function POST(request: Request) {
     const text = await callLLM({
       prompt,
       model: "deepseek-v4-pro",
-      maxTokens: 3072,
+      maxTokens: 4096,
       provider: provider as "anthropic" | "deepseek",
       apiKey,
+      system: "你是一个小红书爆文写手。按提示词的格式要求输出完整文章内容。",
     });
 
     // 9. 解析响应
