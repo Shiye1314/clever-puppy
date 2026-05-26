@@ -21,7 +21,7 @@ export async function runGeneratePipeline(
 
   // 1. 获取配置
   const { data: settings } = await supabaseAdmin
-    .from("app_settings").select("*").single();
+    .from("app_settings").select("*").order("created_at", { ascending: false }).limit(1).maybeSingle();
   const apiKey = settings?.deepseek_api_key || settings?.anthropic_api_key || process.env.CLAUDE_API_KEY!;
   const provider = settings?.provider || "deepseek";
   const generationModel = settings?.preferred_model || (provider === "deepseek" ? "deepseek-v4-pro" : "claude-sonnet-4-6");
@@ -133,7 +133,7 @@ export async function runRewriteSection(
   categoryId?: string
 ) {
   const { data: settings } = await supabaseAdmin
-    .from("app_settings").select("*").single();
+    .from("app_settings").select("*").order("created_at", { ascending: false }).limit(1).maybeSingle();
   const apiKey = settings?.anthropic_api_key || settings?.deepseek_api_key || process.env.CLAUDE_API_KEY!;
   const provider = settings?.provider || "anthropic";
   const model = settings?.preferred_model || (provider === "deepseek" ? "deepseek-v4-pro" : "claude-sonnet-4-6");

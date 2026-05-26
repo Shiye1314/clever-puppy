@@ -8,7 +8,7 @@ const supabaseAdmin = createClient(
 
 export async function GET() {
   // 先查是否有记录，没有则创建
-  let { data } = await supabaseAdmin.from("app_settings").select("*").single();
+  let { data } = await supabaseAdmin.from("app_settings").select("*").order("created_at", { ascending: false }).limit(1).maybeSingle();
 
   if (!data) {
     const { data: inserted } = await supabaseAdmin
@@ -42,7 +42,7 @@ export async function PUT(request: Request) {
 
   // 先查是否有记录
   const { data: existing } = await supabaseAdmin
-    .from("app_settings").select("id").single();
+    .from("app_settings").select("id").order("created_at", { ascending: false }).limit(1).maybeSingle();
 
   if (existing) {
     // 更新

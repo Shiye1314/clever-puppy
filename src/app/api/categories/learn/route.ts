@@ -43,7 +43,7 @@ export async function POST(request: Request) {
 
   // 获取API key和供应商配置
   const { data: settings } = await supabaseAdmin
-    .from("app_settings").select("*").single();
+    .from("app_settings").select("*").order("created_at", { ascending: false }).limit(1).maybeSingle();
   const apiKey = settings?.deepseek_api_key || settings?.anthropic_api_key || process.env.CLAUDE_API_KEY;
   const provider = settings?.provider || "deepseek";
   if (!apiKey) return NextResponse.json({ error: "未配置 API Key" }, { status: 500 });
